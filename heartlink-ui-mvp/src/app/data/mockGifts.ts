@@ -1,0 +1,38 @@
+import type { Gift, GiftOccasion } from "../types";
+import { DEFAULT_CREATE_GIFT_INPUT, MOCK_GENERATED_COPY } from "./mockCopy";
+
+export const COMPLETION_TEXTS: Record<GiftOccasion, string> = {
+  感谢: "这份感谢，已被好好收藏",
+  祝福: "祝福已送达，心意已珍藏",
+  道歉: "我理解了，谢谢你的勇气",
+  鼓励: "谢谢，我会加油的！",
+  小心意: "收到啦！爱意增幅 +1000%",
+};
+
+export const MOCK_RECEIVED_DATE = "2025 年 6 月 17 日";
+
+export const MOCK_GIFT_TOKEN = "mock-heartlink-a9f2";
+
+export const MOCK_GIFT_URL = "heartlink.app/to/最亲爱的妈妈-a9f2";
+
+export const MOCK_GIFT: Gift = {
+  token: MOCK_GIFT_TOKEN,
+  giftUrl: MOCK_GIFT_URL,
+  recipientName: DEFAULT_CREATE_GIFT_INPUT.recipientName,
+  senderName: DEFAULT_CREATE_GIFT_INPUT.senderName,
+  occasion: DEFAULT_CREATE_GIFT_INPUT.occasion,
+  tone: DEFAULT_CREATE_GIFT_INPUT.tone,
+  theme: "复古收据",
+  originalMessage: DEFAULT_CREATE_GIFT_INPUT.originalMessage,
+  amountText: DEFAULT_CREATE_GIFT_INPUT.amountText,
+  copy: {
+    title: MOCK_GENERATED_COPY.title,
+    body: MOCK_GENERATED_COPY.body,
+    quote: MOCK_GENERATED_COPY.quote,
+    buttonText: MOCK_GENERATED_COPY.buttonText,
+    signoff: MOCK_GENERATED_COPY.signoff,
+    coverText: MOCK_GENERATED_COPY.coverText,
+    acceptedText: MOCK_GENERATED_COPY.acceptedText,
+  },
+  status: "link-created",
+};
