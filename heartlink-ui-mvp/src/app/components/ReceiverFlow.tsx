@@ -3,9 +3,11 @@ import { motion, AnimatePresence } from "motion/react";
 import { Heart, Star, Zap, Gift, MessageCircle } from "lucide-react";
 import {
   COMPLETION_TEXTS as CENTRAL_COMPLETION_TEXTS,
-  MOCK_RECEIVER_GIFT,
+  MOCK_GIFT_TOKEN,
   MOCK_RECEIVED_DATE,
 } from "../data";
+import { acceptGift, getGiftByToken } from "../services";
+import type { AppError, Gift as GiftData } from "../types";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 type ReceiverState = "loading" | "cover" | "letter" | "received" | "not-found" | "expired";
@@ -17,12 +19,6 @@ interface ReceiverFlowProps {
 }
 
 // ─── Copy constants ───────────────────────────────────────────────────────────
-const RECEIVER_GIFT = MOCK_RECEIVER_GIFT;
-const CENTRAL_LETTER_TITLE = RECEIVER_GIFT.title;
-const CENTRAL_LETTER_BODY_P1 = RECEIVER_GIFT.bodyParagraphs[0];
-const CENTRAL_LETTER_BODY_P2 = RECEIVER_GIFT.bodyParagraphs[1];
-const CENTRAL_LETTER_QUOTE = RECEIVER_GIFT.quote;
-const CENTRAL_LETTER_SIGNOFF = RECEIVER_GIFT.signoff;
 const CENTRAL_RECEIVED_DATE = MOCK_RECEIVED_DATE;
 
 // ─── Scene icons (for decorative use) ────────────────────────────────────────
@@ -74,24 +70,72 @@ function SkeletonBlock({ width = "100%", height = 14, radius = 99, style }: { wi
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export function ReceiverFlow({ onBack }: ReceiverFlowProps) {
-  const [state, setState] = useState<ReceiverState>("cover");
-  const [scene] = useState<Scene>(RECEIVER_GIFT.occasion);
+  const [state, setState] = useState<ReceiverState>("loading");
+  const [gift, setGift] = useState<GiftData | null>(null);
   const [isOpening, setIsOpening] = useState(false);
 
-  // Auto-advance from loading
+  const scene = (gift?.occasion ?? "感谢") as Scene;
+  const bodyParagraphs = gift?.copy.body.split("\n\n") ?? ["", ""];
+  const centralLetterTitle = gift?.copy.title ?? "";
+  const centralLetterBodyP1 = bodyParagraphs[0] ?? "";
+  const centralLetterBodyP2 = bodyParagraphs[1] ?? "";
+  const centralLetterQuote = gift?.copy.quote ?? "";
+  const centralLetterSignoff = gift?.copy.signoff ?? "";
+
+  // Load mock gift through the service boundary.
   useEffect(() => {
-    if (state === "loading") {
-      const t = setTimeout(() => setState("cover"), 2200);
-      return () => clearTimeout(t);
+    let cancelled = false;
+
+    async function loadGift() {
+      setState("loading");
+
+      try {
+        const loadedGift = await getGiftByToken(MOCK_GIFT_TOKEN);
+        if (cancelled) return;
+        setGift(loadedGift);
+        setState("cover");
+      } catch (error) {
+        if (cancelled) return;
+        const code = typeof error === "object" && error !== null && "code" in error
+          ? (error as AppError).code
+          : "unknown";
+        setState(code === "gift-expired" ? "expired" : "not-found");
+      }
     }
-  }, [state]);
+
+    void loadGift();
+
+    return () => { cancelled = true; };
+  }, []);
 
   const handleOpen = () => {
     setIsOpening(true);
     setTimeout(() => { setState("letter"); setIsOpening(false); }, 700);
   };
 
-  const handleReceive = () => setState("received");
+  const handleReceive = async () => {
+    try {
+      await acceptGift(gift?.token ?? MOCK_GIFT_TOKEN);
+      setState("received");
+    } catch (error) {
+      const code = typeof error === "object" && error !== null && "code" in error
+        ? (error as AppError).code
+        : "unknown";
+      setState(code === "gift-expired" ? "expired" : "not-found");
+    }
+  };
+
+  const handleViewSample = async () => {
+    setState("loading");
+
+    try {
+      const loadedGift = await getGiftByToken(MOCK_GIFT_TOKEN);
+      setGift(loadedGift);
+      setState("cover");
+    } catch {
+      setState("not-found");
+    }
+  };
 
   return (
     <div style={{ minHeight: "100vh", width: "100%", display: "flex", justifyContent: "center", background: "#FAF7F0", position: "relative" }}>
@@ -209,7 +253,7 @@ export function ReceiverFlow({ onBack }: ReceiverFlowProps) {
                     Acknowledgment Receipt
                   </p>
                   <h1 style={{ fontFamily: "'Noto Serif SC', serif", color: "#3F342F", fontSize: 26, letterSpacing: 4, margin: "0 0 20px", lineHeight: 1.35 }}>
-                    {CENTRAL_LETTER_TITLE}
+                    {centralLetterTitle}
                   </h1>
                   <div style={{ height: 1, background: "#EAE2D8" }} />
                 </div>
@@ -217,25 +261,25 @@ export function ReceiverFlow({ onBack }: ReceiverFlowProps) {
                 {/* Body */}
                 <div style={{ padding: "22px 28px 0", display: "flex", flexDirection: "column", gap: 16 }}>
                   <p style={{ fontFamily: "'Noto Serif SC', serif", color: "#3F342F", fontSize: 15, lineHeight: 2.1, textIndent: "2em", letterSpacing: 0.5, margin: 0 }}>
-                    {CENTRAL_LETTER_BODY_P1}
+                    {centralLetterBodyP1}
                   </p>
 
                   {/* Quote block */}
                   <div style={{ borderLeft: "3px solid #C9A66B", background: "#FAF7F0", borderRadius: "0 12px 12px 0", padding: "14px 18px" }}>
                     <p style={{ fontFamily: "'Lora', serif", color: "#9B8E86", fontSize: 14, lineHeight: 1.9, fontStyle: "italic", margin: 0, letterSpacing: 0.3 }}>
-                      "{CENTRAL_LETTER_QUOTE}"
+                      "{centralLetterQuote}"
                     </p>
                   </div>
 
                   <p style={{ fontFamily: "'Noto Serif SC', serif", color: "#3F342F", fontSize: 15, lineHeight: 2.1, textIndent: "2em", letterSpacing: 0.5, margin: 0 }}>
-                    {CENTRAL_LETTER_BODY_P2}
+                    {centralLetterBodyP2}
                   </p>
 
                   {/* Signoff */}
                   <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 4, paddingBottom: 4 }}>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
                       <span style={{ fontFamily: "'Noto Serif SC', serif", color: "#9B8E86", fontSize: 13, letterSpacing: 2 }}>
-                        — {CENTRAL_LETTER_SIGNOFF}
+                        — {centralLetterSignoff}
                       </span>
                       <span style={{ fontFamily: "'Lora', serif", color: "#C5BAB2", fontSize: 11, letterSpacing: 1 }}>
                         {CENTRAL_RECEIVED_DATE.split("年")[0]} · 以{scene}之名
@@ -277,26 +321,26 @@ export function ReceiverFlow({ onBack }: ReceiverFlowProps) {
                     Acknowledgment Receipt
                   </p>
                   <h1 style={{ fontFamily: "'Noto Serif SC', serif", color: "#3F342F", fontSize: 26, letterSpacing: 4, margin: "0 0 20px", lineHeight: 1.35 }}>
-                    {CENTRAL_LETTER_TITLE}
+                    {centralLetterTitle}
                   </h1>
                   <div style={{ height: 1, background: "#EAE2D8" }} />
                 </div>
 
                 <div style={{ padding: "22px 28px 0", display: "flex", flexDirection: "column", gap: 16 }}>
                   <p style={{ fontFamily: "'Noto Serif SC', serif", color: "#3F342F", fontSize: 15, lineHeight: 2.1, textIndent: "2em", letterSpacing: 0.5, margin: 0 }}>
-                    {CENTRAL_LETTER_BODY_P1}
+                    {centralLetterBodyP1}
                   </p>
                   <div style={{ borderLeft: "3px solid #C9A66B", background: "#FAF7F0", borderRadius: "0 12px 12px 0", padding: "14px 18px" }}>
                     <p style={{ fontFamily: "'Lora', serif", color: "#9B8E86", fontSize: 14, lineHeight: 1.9, fontStyle: "italic", margin: 0 }}>
-                      "{CENTRAL_LETTER_QUOTE}"
+                      "{centralLetterQuote}"
                     </p>
                   </div>
                   <p style={{ fontFamily: "'Noto Serif SC', serif", color: "#3F342F", fontSize: 15, lineHeight: 2.1, textIndent: "2em", letterSpacing: 0.5, margin: 0 }}>
-                    {CENTRAL_LETTER_BODY_P2}
+                    {centralLetterBodyP2}
                   </p>
                   <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 4, paddingBottom: 4 }}>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
-                      <span style={{ fontFamily: "'Noto Serif SC', serif", color: "#9B8E86", fontSize: 13, letterSpacing: 2 }}>— {CENTRAL_LETTER_SIGNOFF}</span>
+                      <span style={{ fontFamily: "'Noto Serif SC', serif", color: "#9B8E86", fontSize: 13, letterSpacing: 2 }}>— {centralLetterSignoff}</span>
                       <span style={{ fontFamily: "'Lora', serif", color: "#C5BAB2", fontSize: 11, letterSpacing: 1 }}>
                         {CENTRAL_RECEIVED_DATE.split("年")[0]} · 以{scene}之名
                       </span>
@@ -358,7 +402,7 @@ export function ReceiverFlow({ onBack }: ReceiverFlowProps) {
                   链接可能不存在<br />请向发件人重新索取
                 </p>
 
-                <button onClick={() => setState("cover")}
+                <button onClick={() => { void handleViewSample(); }}
                   style={{ width: "100%", padding: "14px 0", borderRadius: 99, background: "#473B35", color: "#FFFFFF", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 14, letterSpacing: 2, border: "none", cursor: "pointer", boxShadow: "0 4px 16px rgba(71,59,53,0.2)" }}>
                   查看示例效果
                 </button>
@@ -394,7 +438,7 @@ export function ReceiverFlow({ onBack }: ReceiverFlowProps) {
                   链接有效期已过<br />请联系发件人重新生成一份
                 </p>
 
-                <button onClick={() => setState("cover")}
+                <button onClick={() => { void handleViewSample(); }}
                   style={{ width: "100%", padding: "14px 0", borderRadius: 99, background: "#473B35", color: "#FFFFFF", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 14, letterSpacing: 2, border: "none", cursor: "pointer", boxShadow: "0 4px 16px rgba(71,59,53,0.2)" }}>
                   查看示例效果
                 </button>

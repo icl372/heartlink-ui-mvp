@@ -16,6 +16,7 @@ import type {
 
 const MOCK_DELAY_MS = 120;
 const MOCK_GENERATE_COPY_DELAY_MS = 750;
+const MOCK_EXPIRED_GIFT_TOKEN = "mock-heartlink-expired";
 
 function delay(ms = MOCK_DELAY_MS) {
   return new Promise(resolve => window.setTimeout(resolve, ms));
@@ -93,6 +94,14 @@ export async function createGift(input: CreateGiftInput): Promise<CreateGiftResu
 export async function getGiftByToken(token: string): Promise<Gift> {
   await delay();
 
+  if (token === MOCK_EXPIRED_GIFT_TOKEN) {
+    const error: AppError = {
+      code: "gift-expired",
+      message: "Gift token is expired in mock data.",
+    };
+    throw error;
+  }
+
   if (token !== MOCK_GIFT_TOKEN) {
     const error: AppError = {
       code: "gift-not-found",
@@ -106,6 +115,14 @@ export async function getGiftByToken(token: string): Promise<Gift> {
 
 export async function acceptGift(token: string): Promise<AcceptGiftResult> {
   await delay();
+
+  if (token === MOCK_EXPIRED_GIFT_TOKEN) {
+    const error: AppError = {
+      code: "gift-expired",
+      message: "Gift token is expired in mock data.",
+    };
+    throw error;
+  }
 
   if (token !== MOCK_GIFT_TOKEN) {
     const error: AppError = {
