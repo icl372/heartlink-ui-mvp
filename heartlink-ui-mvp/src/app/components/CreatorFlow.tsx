@@ -13,8 +13,8 @@ import {
   THEME_OPTIONS,
   TONE_OPTIONS as CENTRAL_TONE_OPTIONS,
 } from "../data";
-import { generateCopy } from "../services";
-import type { GenerateCopyInput, GenerateCopyResult } from "../types";
+import { createGift, generateCopy } from "../services";
+import type { CreateGiftInput, GenerateCopyInput, GenerateCopyResult } from "../types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Scene = "感谢" | "祝福" | "道歉" | "鼓励" | "小心意";
@@ -160,8 +160,10 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
   const [editSignoff, setEditSignoff] = useState(MOCK_GENERATED_COPY.signoff);
   const [editButtonText, setEditButtonText] = useState(MOCK_GENERATED_COPY.buttonText);
   const [editingField, setEditingField] = useState<"title" | "body" | "quote" | "signoff" | "button" | null>(null);
+  const [generatedLink, setGeneratedLink] = useState("");
 
-  const LINK = `heartlink.app/to/${recipient.replace(/[^a-z0-9一-龥]/gi, "-").toLowerCase()}-a9f2`;
+  const fallbackLink = `heartlink.app/to/${recipient.replace(/[^a-z0-9一-龥]/gi, "-").toLowerCase()}-a9f2`;
+  const successLink = generatedLink || fallbackLink;
 
   // Go back, clamped to 0
   const goBack = () => setStep(s => Math.max(0, s - 1));
@@ -215,8 +217,33 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
     void runGenerateCopy();
   };
 
+  const buildCreateGiftInput = (): CreateGiftInput => ({
+    recipientName: recipient,
+    senderName: sender,
+    occasion: scene,
+    tone,
+    theme: selectedStyle,
+    originalMessage: message,
+    amountText: amount.trim() ? amount : undefined,
+    copy: {
+      coverText: MOCK_GENERATED_COPY.coverText,
+      title: editTitle,
+      body: editBody,
+      quote: editQuote,
+      buttonText: editButtonText,
+      signoff: editSignoff,
+      acceptedText: MOCK_GENERATED_COPY.acceptedText,
+    },
+  });
+
+  const handleCreateGift = async () => {
+    const result = await createGift(buildCreateGiftInput());
+    setGeneratedLink(result.giftUrl);
+    setStep(7);
+  };
+
   const handleCopy = () => {
-    navigator.clipboard.writeText(LINK)
+    navigator.clipboard.writeText(successLink)
       .then(() => { setCopyStatus("success"); setTimeout(() => setCopyStatus("idle"), 2500); })
       .catch(() => { setCopyStatus("fail"); setTimeout(() => setCopyStatus("idle"), 2500); });
   };
@@ -732,7 +759,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
                   style={{ flex: 1, padding: "14px 0", borderRadius: 99, background: "transparent", color: "#9B8E86", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 13, letterSpacing: 1, border: "1.5px solid #EAE2D8", cursor: "pointer" }}>
                   调整风格
                 </button>
-                <button onClick={() => setStep(7)}
+                <button onClick={() => { void handleCreateGift(); }}
                   style={{ flex: 2, padding: "14px 0", borderRadius: 99, background: "#473B35", color: "#FFFFFF", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 14, letterSpacing: 2, border: "none", cursor: "pointer", boxShadow: "0 4px 20px rgba(71,59,53,0.25)" }}>
                   生成链接
                 </button>
@@ -766,7 +793,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontFamily: "'Noto Sans SC', sans-serif", color: "#9B8E86", fontSize: 10, letterSpacing: 1, margin: "0 0 3px" }}>专属链接</p>
                   <p style={{ fontFamily: "monospace", color: "#3F342F", fontSize: 12, letterSpacing: 0.3, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {LINK}
+                    {successLink}
                   </p>
                 </div>
                 <button onClick={handleCopy}
@@ -782,7 +809,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
                   style={{ width: "100%", padding: "14px 0", borderRadius: 99, background: "transparent", color: "#3F342F", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 14, letterSpacing: 2, border: "1.5px solid #EAE2D8", cursor: "pointer" }}>
                   打开预览效果
                 </button>
-                <button onClick={() => { setStep(0); setAiStatus("idle"); }}
+                <button onClick={() => { setStep(0); setAiStatus("idle"); setGeneratedLink(""); }}
                   style={{ background: "none", border: "none", cursor: "pointer", color: "#9B8E86", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 13, letterSpacing: 1, textAlign: "center", borderBottom: "1px solid #EAE2D8", paddingBottom: 1, margin: "0 auto" }}>
                   再创建一份
                 </button>

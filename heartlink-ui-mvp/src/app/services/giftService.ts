@@ -2,7 +2,6 @@ import {
   MOCK_GENERATED_COPY,
   MOCK_GIFT,
   MOCK_GIFT_TOKEN,
-  MOCK_GIFT_URL,
 } from "../data";
 import type {
   AcceptGiftResult,
@@ -27,6 +26,11 @@ function createAiGenerationError(code: AiGenerationError["code"], message: strin
     message,
     retryable: true,
   };
+}
+
+function createMockGiftUrl(recipientName: string) {
+  const recipientSlug = recipientName.replace(/[^a-z0-9一-龥]/gi, "-").toLowerCase();
+  return `heartlink.app/to/${recipientSlug}-a9f2`;
 }
 
 export async function generateCopy(input: GenerateCopyInput): Promise<GenerateCopyResult> {
@@ -61,6 +65,8 @@ export async function generateCopy(input: GenerateCopyInput): Promise<GenerateCo
 export async function createGift(input: CreateGiftInput): Promise<CreateGiftResult> {
   await delay();
 
+  const giftUrl = createMockGiftUrl(input.recipientName);
+
   const gift: Gift = {
     ...MOCK_GIFT,
     recipientName: input.recipientName,
@@ -72,14 +78,14 @@ export async function createGift(input: CreateGiftInput): Promise<CreateGiftResu
     amountText: input.amountText,
     copy: input.copy,
     token: MOCK_GIFT_TOKEN,
-    giftUrl: MOCK_GIFT_URL,
+    giftUrl,
     status: "link-created",
   };
 
   return {
     gift,
     token: MOCK_GIFT_TOKEN,
-    giftUrl: MOCK_GIFT_URL,
+    giftUrl,
   };
 }
 
