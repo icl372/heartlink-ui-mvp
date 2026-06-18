@@ -27,6 +27,39 @@ interface CreatorFlowProps {
   onViewReceiver: () => void;
 }
 
+async function copyTextToClipboard(text: string) {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // Fall back for mobile browsers that expose Clipboard API but reject it.
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.top = "0";
+  textarea.style.left = "-9999px";
+  textarea.style.opacity = "0";
+  textarea.style.fontSize = "16px";
+
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  textarea.setSelectionRange(0, textarea.value.length);
+
+  try {
+    return document.execCommand("copy");
+  } catch {
+    return false;
+  } finally {
+    document.body.removeChild(textarea);
+  }
+}
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 const CENTRAL_SCENE_ICON_MAP: Record<Scene, React.ReactNode> = {
   感谢: <Heart size={20} />,
@@ -122,9 +155,10 @@ function Toast({ status }: { status: CopyStatus }) {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
           style={{
-            position: "fixed", top: 20, left: "50%", transform: "translateX(-50%)",
+            position: "fixed", top: 24, left: 0, right: 0, margin: "0 auto",
+            width: "fit-content", maxWidth: "calc(100vw - 32px)",
             zIndex: 999, display: "flex", alignItems: "center", gap: 8,
-            padding: "10px 20px", borderRadius: 99,
+            padding: "10px 20px", borderRadius: 99, boxSizing: "border-box",
             background: status === "success" ? "#473B35" : "#d4183d",
             boxShadow: "0 4px 24px rgba(0,0,0,0.15)"
           }}>
@@ -242,10 +276,10 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
     setStep(7);
   };
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(successLink)
-      .then(() => { setCopyStatus("success"); setTimeout(() => setCopyStatus("idle"), 2500); })
-      .catch(() => { setCopyStatus("fail"); setTimeout(() => setCopyStatus("idle"), 2500); });
+  const handleCopy = async () => {
+    const copied = await copyTextToClipboard(successLink);
+    setCopyStatus(copied ? "success" : "fail");
+    setTimeout(() => setCopyStatus("idle"), 2500);
   };
 
   const showProgress = step >= 1 && step <= 6;

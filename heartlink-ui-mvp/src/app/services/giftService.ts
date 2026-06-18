@@ -15,6 +15,7 @@ import type {
 } from "../types";
 
 const MOCK_DELAY_MS = 120;
+const MOCK_GENERATE_COPY_DELAY_MS = 750;
 
 function delay(ms = MOCK_DELAY_MS) {
   return new Promise(resolve => window.setTimeout(resolve, ms));
@@ -34,7 +35,7 @@ function createMockGiftUrl(recipientName: string) {
 }
 
 export async function generateCopy(input: GenerateCopyInput): Promise<GenerateCopyResult> {
-  await delay();
+  await delay(MOCK_GENERATE_COPY_DELAY_MS);
 
   if (!input.recipientName.trim() || !input.originalMessage.trim()) {
     throw createAiGenerationError(
