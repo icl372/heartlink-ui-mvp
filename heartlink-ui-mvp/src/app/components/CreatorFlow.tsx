@@ -13,6 +13,8 @@ import {
   THEME_OPTIONS,
   TONE_OPTIONS as CENTRAL_TONE_OPTIONS,
 } from "../data";
+import { generateCopy } from "../services";
+import type { GenerateCopyInput, GenerateCopyResult } from "../types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Scene = "感谢" | "祝福" | "道歉" | "鼓励" | "小心意";
@@ -164,22 +166,53 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
   // Go back, clamped to 0
   const goBack = () => setStep(s => Math.max(0, s - 1));
 
-  const handleGenerate = () => {
-    if (!message.trim() || !recipient.trim()) return;
+  const buildGenerateCopyInput = (): GenerateCopyInput => ({
+    recipientName: recipient,
+    senderName: sender,
+    occasion: scene,
+    tone,
+    amountText: amount.trim() ? amount : undefined,
+    originalMessage: message,
+  });
+
+  const applyGeneratedCopy = (copy: GenerateCopyResult) => {
+    setEditTitle(copy.title);
+    setEditBody(copy.body);
+    setEditQuote(copy.quote);
+    setEditSignoff(copy.signoff);
+    setEditButtonText(copy.buttonText);
+  };
+
+  const resolveAiStatusFromError = (error: unknown): AiStatus => {
+    const code = typeof error === "object" && error !== null && "code" in error
+      ? (error as { code?: unknown }).code
+      : undefined;
+
+    return code === "network-error" ? "network-error" : "failed";
+  };
+
+  const runGenerateCopy = async () => {
     setAiStatus("generating");
     setStep(3);
-    // Simulate: 80% success, or can be toggled to fail
-    setTimeout(() => {
+
+    try {
+      const generatedCopy = await generateCopy(buildGenerateCopyInput());
+      applyGeneratedCopy(generatedCopy);
       setAiStatus("success");
       setStep(4);
-    }, 2000);
+    } catch (error) {
+      setAiStatus(resolveAiStatusFromError(error));
+      setStep(4);
+    }
+  };
+
+  const handleGenerate = () => {
+    if (!message.trim() || !recipient.trim()) return;
+    void runGenerateCopy();
   };
 
   const handleRetry = () => {
-    setAiStatus("generating");
-    setTimeout(() => {
-      setAiStatus("success");
-    }, 1800);
+    void runGenerateCopy();
   };
 
   const handleCopy = () => {

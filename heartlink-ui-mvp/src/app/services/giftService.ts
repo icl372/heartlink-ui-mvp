@@ -21,16 +21,38 @@ function delay(ms = MOCK_DELAY_MS) {
   return new Promise(resolve => window.setTimeout(resolve, ms));
 }
 
+function createAiGenerationError(code: AiGenerationError["code"], message: string): AiGenerationError {
+  return {
+    code,
+    message,
+    retryable: true,
+  };
+}
+
 export async function generateCopy(input: GenerateCopyInput): Promise<GenerateCopyResult> {
   await delay();
 
   if (!input.recipientName.trim() || !input.originalMessage.trim()) {
-    const error: AiGenerationError = {
-      code: "ai-generation-failed",
-      message: "Required copy generation input is empty.",
-      retryable: true,
-    };
-    throw error;
+    throw createAiGenerationError(
+      "ai-generation-failed",
+      "Required copy generation input is empty.",
+    );
+  }
+
+  const normalizedMessage = input.originalMessage.toLowerCase();
+
+  if (normalizedMessage.includes("__mock_network_error__")) {
+    throw createAiGenerationError(
+      "network-error",
+      "Mock network error while generating copy.",
+    );
+  }
+
+  if (normalizedMessage.includes("__mock_ai_error__")) {
+    throw createAiGenerationError(
+      "ai-generation-failed",
+      "Mock AI generation error.",
+    );
   }
 
   return { ...MOCK_GENERATED_COPY };
