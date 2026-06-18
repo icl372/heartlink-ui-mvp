@@ -308,11 +308,8 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
 
   const handleOpenPreview = () => {
     if (typeof window !== "undefined") {
-      const previewUrl = new URL(successLink, window.location.origin);
-      window.history.pushState(null, "", previewUrl.pathname);
+      window.open(successLink, "_blank", "noopener,noreferrer");
     }
-
-    onViewReceiver();
   };
 
   const showProgress = step >= 1 && step <= 6;
