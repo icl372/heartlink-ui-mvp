@@ -14,14 +14,26 @@ import {
   TONE_OPTIONS as CENTRAL_TONE_OPTIONS,
 } from "../data";
 import { createGift, generateCopy } from "../services";
-import type { CreateGiftInput, GenerateCopyInput, GenerateCopyResult } from "../types";
+import type {
+  AiGenerationStatus,
+  CopyLinkStatus,
+  CreateGiftInput,
+  CreatorStep,
+  EditableCopyField,
+  GenerateCopyInput,
+  GenerateCopyResult,
+  GiftOccasion,
+  GiftTheme,
+  GiftTone,
+} from "../types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type Scene = "感谢" | "祝福" | "道歉" | "鼓励" | "小心意";
-type Style = "温柔信纸" | "复古收据" | "诗意卡片" | "简约便签";
-type Tone = "真诚" | "温柔" | "可爱" | "克制" | "正式" | "诗意";
-type AiStatus = "idle" | "generating" | "success" | "failed" | "network-error";
-type CopyStatus = "idle" | "success" | "fail";
+type Scene = GiftOccasion;
+type Style = GiftTheme;
+type Tone = GiftTone;
+type AiStatus = AiGenerationStatus;
+type CopyStatus = CopyLinkStatus;
+type EditingField = EditableCopyField | null;
 const MOCK_PREVIEW_TOKEN = "mock-heartlink-a9f2";
 
 interface CreatorFlowProps {
@@ -85,7 +97,21 @@ const CENTRAL_SCENE_OPTIONS = OCCASION_OPTIONS.map(opt => ({
 
 const CENTRAL_STYLE_OPTIONS = THEME_OPTIONS;
 
-const PROGRESS_MAP: Record<number, { label: string; index: number }> = {
+const CREATOR_STEPS = {
+  home: 0,
+  occasion: 1,
+  details: 2,
+  aiGenerating: 3,
+  aiResult: 4,
+  theme: 5,
+  preview: 6,
+  success: 7,
+} as const satisfies Record<string, CreatorStep>;
+
+const FIRST_PROGRESS_STEP = CREATOR_STEPS.occasion;
+const LAST_PROGRESS_STEP = CREATOR_STEPS.preview;
+
+const PROGRESS_MAP: Partial<Record<CreatorStep, { label: string; index: number }>> = {
   1: { label: "场景", index: 1 },
   2: { label: "填写", index: 2 },
   3: { label: "生成", index: 3 },
@@ -95,6 +121,18 @@ const PROGRESS_MAP: Record<number, { label: string; index: number }> = {
 };
 
 // ─── Style Thumbnails ─────────────────────────────────────────────────────────
+function getPreviousCreatorStep(currentStep: CreatorStep): CreatorStep {
+  if (currentStep === CREATOR_STEPS.aiGenerating || currentStep === CREATOR_STEPS.aiResult) {
+    return CREATOR_STEPS.details;
+  }
+
+  if (currentStep === CREATOR_STEPS.home) {
+    return CREATOR_STEPS.home;
+  }
+
+  return (currentStep - 1) as CreatorStep;
+}
+
 function StyleThumbnail({ style, selected }: { style: Style; selected: boolean }) {
   const borderColor = selected ? "#473B35" : "#EAE2D8";
 
@@ -185,7 +223,7 @@ function Toast({ status }: { status: CopyStatus }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState<CreatorStep>(CREATOR_STEPS.home);
   const [scene, setScene] = useState<Scene>(DEFAULT_CREATE_GIFT_INPUT.occasion);
   const [recipient, setRecipient] = useState(DEFAULT_CREATE_GIFT_INPUT.recipientName);
   const [sender, setSender] = useState(DEFAULT_CREATE_GIFT_INPUT.senderName);
@@ -202,7 +240,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
   const [editQuote, setEditQuote] = useState(MOCK_GENERATED_COPY.quote);
   const [editSignoff, setEditSignoff] = useState(MOCK_GENERATED_COPY.signoff);
   const [editButtonText, setEditButtonText] = useState(MOCK_GENERATED_COPY.buttonText);
-  const [editingField, setEditingField] = useState<"title" | "body" | "quote" | "signoff" | "button" | null>(null);
+  const [editingField, setEditingField] = useState<EditingField>(null);
   const [generatedLink, setGeneratedLink] = useState("");
   const generateRequestIdRef = useRef(0);
 
@@ -212,13 +250,12 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
   // Go back, clamped to 0
   const goBack = () => {
     setStep(currentStep => {
-      if (currentStep === 3 || currentStep === 4) {
+      if (currentStep === CREATOR_STEPS.aiGenerating || currentStep === CREATOR_STEPS.aiResult) {
         generateRequestIdRef.current += 1;
         setAiStatus("idle");
-        return 2;
       }
 
-      return Math.max(0, currentStep - 1);
+      return getPreviousCreatorStep(currentStep);
     });
   };
 
@@ -251,18 +288,18 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
     const requestId = generateRequestIdRef.current + 1;
     generateRequestIdRef.current = requestId;
     setAiStatus("generating");
-    setStep(3);
+    setStep(CREATOR_STEPS.aiGenerating);
 
     try {
       const generatedCopy = await generateCopy(buildGenerateCopyInput());
       if (generateRequestIdRef.current !== requestId) return;
       applyGeneratedCopy(generatedCopy);
       setAiStatus("success");
-      setStep(4);
+      setStep(CREATOR_STEPS.aiResult);
     } catch (error) {
       if (generateRequestIdRef.current !== requestId) return;
       setAiStatus(resolveAiStatusFromError(error));
-      setStep(4);
+      setStep(CREATOR_STEPS.aiResult);
     }
   };
 
@@ -297,7 +334,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
   const handleCreateGift = async () => {
     const result = await createGift(buildCreateGiftInput());
     setGeneratedLink(result.giftUrl);
-    setStep(7);
+    setStep(CREATOR_STEPS.success);
   };
 
   const handleCopy = async () => {
@@ -312,7 +349,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
     }
   };
 
-  const showProgress = step >= 1 && step <= 6;
+  const showProgress = step >= FIRST_PROGRESS_STEP && step <= LAST_PROGRESS_STEP;
   const progressInfo = PROGRESS_MAP[step];
 
   return (
@@ -351,7 +388,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
         <AnimatePresence mode="wait">
 
           {/* ── Step 0: Home ─────────────────────────────────────────────── */}
-          {step === 0 && (
+          {step === CREATOR_STEPS.home && (
             <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, y: -10 }}
               style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between", minHeight: "100vh", padding: "0 28px 52px" }}>
 
@@ -393,7 +430,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
 
               {/* CTA */}
               <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: 18, marginTop: 30 }}>
-                <button onClick={() => setStep(1)}
+                <button onClick={() => setStep(CREATOR_STEPS.occasion)}
                   style={{ width: "100%", padding: "16px 0", borderRadius: 99, background: "#473B35", color: "#FFFFFF", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 15, letterSpacing: 4, border: "none", cursor: "pointer", boxShadow: "0 6px 24px rgba(71,59,53,0.25)", transition: "transform 0.1s" }}
                   onMouseDown={e => (e.currentTarget.style.transform = "scale(0.97)")}
                   onMouseUp={e => (e.currentTarget.style.transform = "scale(1)")}>
@@ -409,7 +446,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
           )}
 
           {/* ── Step 1: Scene Selection ───────────────────────────────────── */}
-          {step === 1 && (
+          {step === CREATOR_STEPS.occasion && (
             <motion.div key="scene" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }}
               style={{ padding: "8px 24px 40px", display: "flex", flexDirection: "column", gap: 24 }}>
               <div>
@@ -454,7 +491,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
                 );
               })()}
 
-              <button onClick={() => setStep(2)}
+              <button onClick={() => setStep(CREATOR_STEPS.details)}
                 style={{ width: "100%", padding: "16px 0", borderRadius: 99, background: "#473B35", color: "#FFFFFF", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 15, letterSpacing: 3, border: "none", cursor: "pointer", boxShadow: "0 4px 20px rgba(71,59,53,0.25)", marginTop: 4 }}>
                 下一步：填写信息
               </button>
@@ -462,7 +499,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
           )}
 
           {/* ── Step 2: Form ──────────────────────────────────────────────── */}
-          {step === 2 && (
+          {step === CREATOR_STEPS.details && (
             <motion.div key="form" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }}
               style={{ padding: "8px 24px 40px", display: "flex", flexDirection: "column", gap: 20 }}>
               <div>
@@ -526,7 +563,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
           )}
 
           {/* ── Step 3: Generating ────────────────────────────────────────── */}
-          {step === 3 && (
+          {step === CREATOR_STEPS.aiGenerating && (
             <motion.div key="generating" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "calc(100vh - 80px)", gap: 32, padding: "0 40px" }}>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20 }}>
@@ -557,7 +594,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
           )}
 
           {/* ── Step 4: AI Result / Error ─────────────────────────────────── */}
-          {step === 4 && (
+          {step === CREATOR_STEPS.aiResult && (
             <motion.div key="result" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
               style={{ padding: "8px 24px 40px", display: "flex", flexDirection: "column", gap: 16 }}>
 
@@ -712,7 +749,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
                     点击字段右侧图标可直接编辑
                   </p>
 
-                  <button onClick={() => setStep(5)}
+                  <button onClick={() => setStep(CREATOR_STEPS.theme)}
                     style={{ width: "100%", padding: "16px 0", borderRadius: 99, background: "#473B35", color: "#FFFFFF", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 15, letterSpacing: 3, border: "none", cursor: "pointer", boxShadow: "0 4px 20px rgba(71,59,53,0.25)" }}>
                     使用这份文案 →
                   </button>
@@ -722,7 +759,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
           )}
 
           {/* ── Step 5: Style Selection ───────────────────────────────────── */}
-          {step === 5 && (
+          {step === CREATOR_STEPS.theme && (
             <motion.div key="style" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }}
               style={{ padding: "8px 24px 40px", display: "flex", flexDirection: "column", gap: 20 }}>
               <div>
@@ -752,7 +789,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
                 })}
               </div>
 
-              <button onClick={() => setStep(6)}
+              <button onClick={() => setStep(CREATOR_STEPS.preview)}
                 style={{ width: "100%", padding: "16px 0", borderRadius: 99, background: "#473B35", color: "#FFFFFF", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 15, letterSpacing: 3, border: "none", cursor: "pointer", boxShadow: "0 4px 20px rgba(71,59,53,0.25)", marginTop: 4 }}>
                 预览效果 →
               </button>
@@ -760,7 +797,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
           )}
 
           {/* ── Step 6: Preview ───────────────────────────────────────────── */}
-          {step === 6 && (
+          {step === CREATOR_STEPS.preview && (
             <motion.div key="preview" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }}
               style={{ padding: "8px 24px 40px", display: "flex", flexDirection: "column", gap: 16 }}>
               <div>
@@ -819,7 +856,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
               </div>
 
               <div style={{ display: "flex", gap: 10 }}>
-                <button onClick={() => setStep(5)}
+                <button onClick={() => setStep(CREATOR_STEPS.theme)}
                   style={{ flex: 1, padding: "14px 0", borderRadius: 99, background: "transparent", color: "#9B8E86", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 13, letterSpacing: 1, border: "1.5px solid #EAE2D8", cursor: "pointer" }}>
                   调整风格
                 </button>
@@ -832,7 +869,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
           )}
 
           {/* ── Step 7: Success ───────────────────────────────────────────── */}
-          {step === 7 && (
+          {step === CREATOR_STEPS.success && (
             <motion.div key="success" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
               style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100vh", padding: "0 28px 48px", gap: 28 }}>
 
@@ -873,7 +910,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
                   style={{ width: "100%", padding: "14px 0", borderRadius: 99, background: "transparent", color: "#3F342F", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 14, letterSpacing: 2, border: "1.5px solid #EAE2D8", cursor: "pointer" }}>
                   打开预览效果
                 </button>
-                <button onClick={() => { setStep(0); setAiStatus("idle"); setGeneratedLink(""); }}
+                <button onClick={() => { setStep(CREATOR_STEPS.home); setAiStatus("idle"); setGeneratedLink(""); }}
                   style={{ background: "none", border: "none", cursor: "pointer", color: "#9B8E86", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 13, letterSpacing: 1, textAlign: "center", borderBottom: "1px solid #EAE2D8", paddingBottom: 1, margin: "0 auto" }}>
                   再创建一份
                 </button>
