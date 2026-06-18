@@ -17,6 +17,9 @@ import type {
 const MOCK_DELAY_MS = 120;
 const MOCK_GENERATE_COPY_DELAY_MS = 750;
 const MOCK_EXPIRED_GIFT_TOKEN = "mock-heartlink-expired";
+const mockGiftStore = new Map<string, Gift>([
+  [MOCK_GIFT_TOKEN, { ...MOCK_GIFT }],
+]);
 
 function delay(ms = MOCK_DELAY_MS) {
   return new Promise(resolve => window.setTimeout(resolve, ms));
@@ -30,9 +33,16 @@ function createAiGenerationError(code: AiGenerationError["code"], message: strin
   };
 }
 
-function createMockGiftUrl(recipientName: string) {
-  const recipientSlug = recipientName.replace(/[^a-z0-9一-龥]/gi, "-").toLowerCase();
-  return `heartlink.app/to/${recipientSlug}-a9f2`;
+function getMockBaseUrl() {
+  if (typeof window !== "undefined" && window.location.origin) {
+    return window.location.origin;
+  }
+
+  return "http://localhost:5173";
+}
+
+function createMockGiftUrl(token: string) {
+  return `${getMockBaseUrl()}/to/${token}`;
 }
 
 export async function generateCopy(input: GenerateCopyInput): Promise<GenerateCopyResult> {
@@ -67,7 +77,8 @@ export async function generateCopy(input: GenerateCopyInput): Promise<GenerateCo
 export async function createGift(input: CreateGiftInput): Promise<CreateGiftResult> {
   await delay();
 
-  const giftUrl = createMockGiftUrl(input.recipientName);
+  const token = MOCK_GIFT_TOKEN;
+  const giftUrl = createMockGiftUrl(token);
 
   const gift: Gift = {
     ...MOCK_GIFT,
@@ -79,14 +90,16 @@ export async function createGift(input: CreateGiftInput): Promise<CreateGiftResu
     originalMessage: input.originalMessage,
     amountText: input.amountText,
     copy: input.copy,
-    token: MOCK_GIFT_TOKEN,
+    token,
     giftUrl,
     status: "link-created",
   };
 
+  mockGiftStore.set(token, gift);
+
   return {
     gift,
-    token: MOCK_GIFT_TOKEN,
+    token,
     giftUrl,
   };
 }
@@ -102,7 +115,9 @@ export async function getGiftByToken(token: string): Promise<Gift> {
     throw error;
   }
 
-  if (token !== MOCK_GIFT_TOKEN) {
+  const gift = mockGiftStore.get(token);
+
+  if (!gift) {
     const error: AppError = {
       code: "gift-not-found",
       message: "Gift token was not found in mock data.",
@@ -110,7 +125,7 @@ export async function getGiftByToken(token: string): Promise<Gift> {
     throw error;
   }
 
-  return { ...MOCK_GIFT };
+  return { ...gift };
 }
 
 export async function acceptGift(token: string): Promise<AcceptGiftResult> {
@@ -124,7 +139,9 @@ export async function acceptGift(token: string): Promise<AcceptGiftResult> {
     throw error;
   }
 
-  if (token !== MOCK_GIFT_TOKEN) {
+  const gift = mockGiftStore.get(token);
+
+  if (!gift) {
     const error: AppError = {
       code: "gift-not-found",
       message: "Gift token was not found in mock data.",
@@ -135,6 +152,6 @@ export async function acceptGift(token: string): Promise<AcceptGiftResult> {
   return {
     token,
     acceptedAt: new Date().toISOString(),
-    acceptedText: MOCK_GIFT.copy.acceptedText ?? "",
+    acceptedText: gift.copy.acceptedText ?? "",
   };
 }

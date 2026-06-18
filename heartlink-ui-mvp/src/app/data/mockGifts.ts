@@ -13,7 +13,7 @@ export const MOCK_RECEIVED_DATE = "2025 年 6 月 17 日";
 
 export const MOCK_GIFT_TOKEN = "mock-heartlink-a9f2";
 
-export const MOCK_GIFT_URL = "heartlink.app/to/最亲爱的妈妈-a9f2";
+export const MOCK_GIFT_URL = "/to/mock-heartlink-a9f2";
 
 export const MOCK_GIFT: Gift = {
   token: MOCK_GIFT_TOKEN,

@@ -22,9 +22,18 @@ type Style = "温柔信纸" | "复古收据" | "诗意卡片" | "简约便签";
 type Tone = "真诚" | "温柔" | "可爱" | "克制" | "正式" | "诗意";
 type AiStatus = "idle" | "generating" | "success" | "failed" | "network-error";
 type CopyStatus = "idle" | "success" | "fail";
+const MOCK_PREVIEW_TOKEN = "mock-heartlink-a9f2";
 
 interface CreatorFlowProps {
   onViewReceiver: () => void;
+}
+
+function getLocalMockBaseUrl() {
+  if (typeof window !== "undefined" && window.location.origin) {
+    return window.location.origin;
+  }
+
+  return "http://localhost:5173";
 }
 
 async function copyTextToClipboard(text: string) {
@@ -197,7 +206,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
   const [generatedLink, setGeneratedLink] = useState("");
   const generateRequestIdRef = useRef(0);
 
-  const fallbackLink = `heartlink.app/to/${recipient.replace(/[^a-z0-9一-龥]/gi, "-").toLowerCase()}-a9f2`;
+  const fallbackLink = `${getLocalMockBaseUrl()}/to/${MOCK_PREVIEW_TOKEN}`;
   const successLink = generatedLink || fallbackLink;
 
   // Go back, clamped to 0
