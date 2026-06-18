@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Heart, Star, MessageCircle, Zap, Gift,
@@ -195,12 +195,23 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
   const [editButtonText, setEditButtonText] = useState(MOCK_GENERATED_COPY.buttonText);
   const [editingField, setEditingField] = useState<"title" | "body" | "quote" | "signoff" | "button" | null>(null);
   const [generatedLink, setGeneratedLink] = useState("");
+  const generateRequestIdRef = useRef(0);
 
   const fallbackLink = `heartlink.app/to/${recipient.replace(/[^a-z0-9一-龥]/gi, "-").toLowerCase()}-a9f2`;
   const successLink = generatedLink || fallbackLink;
 
   // Go back, clamped to 0
-  const goBack = () => setStep(s => Math.max(0, s - 1));
+  const goBack = () => {
+    setStep(currentStep => {
+      if (currentStep === 3 || currentStep === 4) {
+        generateRequestIdRef.current += 1;
+        setAiStatus("idle");
+        return 2;
+      }
+
+      return Math.max(0, currentStep - 1);
+    });
+  };
 
   const buildGenerateCopyInput = (): GenerateCopyInput => ({
     recipientName: recipient,
@@ -228,15 +239,19 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
   };
 
   const runGenerateCopy = async () => {
+    const requestId = generateRequestIdRef.current + 1;
+    generateRequestIdRef.current = requestId;
     setAiStatus("generating");
     setStep(3);
 
     try {
       const generatedCopy = await generateCopy(buildGenerateCopyInput());
+      if (generateRequestIdRef.current !== requestId) return;
       applyGeneratedCopy(generatedCopy);
       setAiStatus("success");
       setStep(4);
     } catch (error) {
+      if (generateRequestIdRef.current !== requestId) return;
       setAiStatus(resolveAiStatusFromError(error));
       setStep(4);
     }
