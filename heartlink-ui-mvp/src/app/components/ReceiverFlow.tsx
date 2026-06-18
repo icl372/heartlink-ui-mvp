@@ -16,6 +16,7 @@ type Scene = "感谢" | "祝福" | "道歉" | "鼓励" | "小心意";
 
 interface ReceiverFlowProps {
   onBack: () => void;
+  token?: string;
 }
 
 // ─── Copy constants ───────────────────────────────────────────────────────────
@@ -69,10 +70,11 @@ function SkeletonBlock({ width = "100%", height = 14, radius = 99, style }: { wi
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export function ReceiverFlow({ onBack }: ReceiverFlowProps) {
+export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
   const [state, setState] = useState<ReceiverState>("loading");
   const [gift, setGift] = useState<GiftData | null>(null);
   const [isOpening, setIsOpening] = useState(false);
+  const receiverToken = token ?? MOCK_GIFT_TOKEN;
 
   const scene = (gift?.occasion ?? "感谢") as Scene;
   const bodyParagraphs = gift?.copy.body.split("\n\n") ?? ["", ""];
@@ -90,7 +92,7 @@ export function ReceiverFlow({ onBack }: ReceiverFlowProps) {
       setState("loading");
 
       try {
-        const loadedGift = await getGiftByToken(MOCK_GIFT_TOKEN);
+        const loadedGift = await getGiftByToken(receiverToken);
         if (cancelled) return;
         setGift(loadedGift);
         setState("cover");
@@ -106,7 +108,7 @@ export function ReceiverFlow({ onBack }: ReceiverFlowProps) {
     void loadGift();
 
     return () => { cancelled = true; };
-  }, []);
+  }, [receiverToken]);
 
   const handleOpen = () => {
     setIsOpening(true);
@@ -115,7 +117,7 @@ export function ReceiverFlow({ onBack }: ReceiverFlowProps) {
 
   const handleReceive = async () => {
     try {
-      await acceptGift(gift?.token ?? MOCK_GIFT_TOKEN);
+      await acceptGift(gift?.token ?? receiverToken);
       setState("received");
     } catch (error) {
       const code = typeof error === "object" && error !== null && "code" in error

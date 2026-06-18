@@ -306,6 +306,15 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
     setTimeout(() => setCopyStatus("idle"), 2500);
   };
 
+  const handleOpenPreview = () => {
+    if (typeof window !== "undefined") {
+      const previewUrl = new URL(successLink, window.location.origin);
+      window.history.pushState(null, "", previewUrl.pathname);
+    }
+
+    onViewReceiver();
+  };
+
   const showProgress = step >= 1 && step <= 6;
   const progressInfo = PROGRESS_MAP[step];
 
@@ -863,7 +872,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
 
               {/* Actions */}
               <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 10 }}>
-                <button onClick={() => { onViewReceiver(); }}
+                <button onClick={handleOpenPreview}
                   style={{ width: "100%", padding: "14px 0", borderRadius: 99, background: "transparent", color: "#3F342F", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 14, letterSpacing: 2, border: "1.5px solid #EAE2D8", cursor: "pointer" }}>
                   打开预览效果
                 </button>

@@ -17,6 +17,7 @@ import type {
 const MOCK_DELAY_MS = 120;
 const MOCK_GENERATE_COPY_DELAY_MS = 750;
 const MOCK_EXPIRED_GIFT_TOKEN = "mock-heartlink-expired";
+const MOCK_GIFT_STORAGE_KEY = "heartlink_mock_gifts";
 const mockGiftStore = new Map<string, Gift>([
   [MOCK_GIFT_TOKEN, { ...MOCK_GIFT }],
 ]);
@@ -43,6 +44,59 @@ function getMockBaseUrl() {
 
 function createMockGiftUrl(token: string) {
   return `${getMockBaseUrl()}/to/${token}`;
+}
+
+function createMockGiftToken() {
+  return `mock-heartlink-${Date.now().toString(36)}`;
+}
+
+function readStoredMockGifts(): Record<string, Gift> {
+  if (typeof window === "undefined") return {};
+
+  try {
+    const storedGifts = window.localStorage.getItem(MOCK_GIFT_STORAGE_KEY);
+    return storedGifts ? JSON.parse(storedGifts) as Record<string, Gift> : {};
+  } catch {
+    return {};
+  }
+}
+
+function readStoredMockGift(token: string) {
+  return readStoredMockGifts()[token];
+}
+
+function writeStoredMockGift(gift: Gift) {
+  if (typeof window === "undefined") return;
+
+  try {
+    // Local mock preview storage only. This is not production link storage;
+    // a later Supabase phase will replace this persistence boundary.
+    const storedGifts = readStoredMockGifts();
+    storedGifts[gift.token] = gift;
+    window.localStorage.setItem(MOCK_GIFT_STORAGE_KEY, JSON.stringify(storedGifts));
+  } catch {
+    // Keep the in-memory mock flow usable even if browser storage is unavailable.
+  }
+}
+
+function getStoredOrDefaultGift(token: string) {
+  const storedGift = mockGiftStore.get(token) ?? readStoredMockGift(token);
+
+  if (storedGift) {
+    mockGiftStore.set(token, storedGift);
+    return storedGift;
+  }
+
+  if (token === MOCK_GIFT_TOKEN) {
+    const defaultGift = {
+      ...MOCK_GIFT,
+      giftUrl: createMockGiftUrl(MOCK_GIFT_TOKEN),
+    };
+    mockGiftStore.set(token, defaultGift);
+    return defaultGift;
+  }
+
+  return undefined;
 }
 
 export async function generateCopy(input: GenerateCopyInput): Promise<GenerateCopyResult> {
@@ -77,7 +131,7 @@ export async function generateCopy(input: GenerateCopyInput): Promise<GenerateCo
 export async function createGift(input: CreateGiftInput): Promise<CreateGiftResult> {
   await delay();
 
-  const token = MOCK_GIFT_TOKEN;
+  const token = createMockGiftToken();
   const giftUrl = createMockGiftUrl(token);
 
   const gift: Gift = {
@@ -96,6 +150,7 @@ export async function createGift(input: CreateGiftInput): Promise<CreateGiftResu
   };
 
   mockGiftStore.set(token, gift);
+  writeStoredMockGift(gift);
 
   return {
     gift,
@@ -115,7 +170,7 @@ export async function getGiftByToken(token: string): Promise<Gift> {
     throw error;
   }
 
-  const gift = mockGiftStore.get(token);
+  const gift = getStoredOrDefaultGift(token);
 
   if (!gift) {
     const error: AppError = {
@@ -139,7 +194,7 @@ export async function acceptGift(token: string): Promise<AcceptGiftResult> {
     throw error;
   }
 
-  const gift = mockGiftStore.get(token);
+  const gift = getStoredOrDefaultGift(token);
 
   if (!gift) {
     const error: AppError = {
