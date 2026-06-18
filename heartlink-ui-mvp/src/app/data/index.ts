@@ -25,5 +25,6 @@ export {
   MOCK_GIFT,
   MOCK_GIFT_TOKEN,
   MOCK_GIFT_URL,
+  MOCK_RECEIVER_GIFT,
   MOCK_RECEIVED_DATE,
 } from "./mockGifts";

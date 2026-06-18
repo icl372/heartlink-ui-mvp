@@ -5,6 +5,14 @@ import {
   ArrowLeft, Copy, Check, RefreshCw, Edit3, X,
   AlertCircle, WifiOff, ChevronRight, Mail,
 } from "lucide-react";
+import {
+  DEFAULT_CREATE_GIFT_INPUT,
+  DEFAULT_THEME,
+  MOCK_GENERATED_COPY,
+  OCCASION_OPTIONS,
+  THEME_OPTIONS,
+  TONE_OPTIONS as CENTRAL_TONE_OPTIONS,
+} from "../data";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Scene = "感谢" | "祝福" | "道歉" | "鼓励" | "小心意";
@@ -18,31 +26,21 @@ interface CreatorFlowProps {
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const SCENE_OPTIONS: { label: Scene; icon: React.ReactNode; desc: string }[] = [
-  { label: "感谢", icon: <Heart size={20} />, desc: "表达内心的感激" },
-  { label: "祝福", icon: <Star size={20} />, desc: "送上美好祝愿" },
-  { label: "道歉", icon: <MessageCircle size={20} />, desc: "化解心中的歉意" },
-  { label: "鼓励", icon: <Zap size={20} />, desc: "点燃前行的力量" },
-  { label: "小心意", icon: <Gift size={20} />, desc: "一份小支持与心意" },
-];
+const CENTRAL_SCENE_ICON_MAP: Record<Scene, React.ReactNode> = {
+  感谢: <Heart size={20} />,
+  祝福: <Star size={20} />,
+  道歉: <MessageCircle size={20} />,
+  鼓励: <Zap size={20} />,
+  小心意: <Gift size={20} />,
+};
 
-const TONE_OPTIONS: Tone[] = ["真诚", "温柔", "可爱", "克制", "正式", "诗意"];
+const CENTRAL_SCENE_OPTIONS = OCCASION_OPTIONS.map(opt => ({
+  ...opt,
+  icon: CENTRAL_SCENE_ICON_MAP[opt.label],
+}));
 
-const STYLE_OPTIONS: { label: Style; desc: string; sub: string }[] = [
-  { label: "温柔信纸", desc: "柔和底纹 · 衬线字体 · 典雅排版", sub: "如一封手写的信" },
-  { label: "复古收据", desc: "单据美学 · 克制留白 · 仪式感", sub: "RECEIPT STYLE" },
-  { label: "诗意卡片", desc: "金边细节 · 诗句引用 · 卡片装帧", sub: "如一张明信片" },
-  { label: "简约便签", desc: "极简留白 · 手写质感 · 纯粹表达", sub: "Less is more" },
-];
+const CENTRAL_STYLE_OPTIONS = THEME_OPTIONS;
 
-const AI_TITLE_DEFAULT = "妈妈，谢谢您。";
-const AI_BODY_DEFAULT =
-  "您资助的 200 元流动资金已妥妥到账，瞬间让我的小金库洒满了阳光。这不仅仅是一笔零花钱，更是您对我悄悄流露的纵容与疼爱。\n\n感谢您总是在细微处给予我满满的安全感。每一分资金我都会合理规划。愿岁月的长河里，您始终明朗、温暖，被时光温柔以待！";
-const AI_QUOTE_DEFAULT = "水中之灯，照亮夜航；人间词话，不及母爱之长。";
-const AI_SIGNOFF_DEFAULT = "您的专属宝贝 敬呈";
-const AI_BUTTON_DEFAULT = "点击接收我的爱心电波";
-
-// ─── Progress labels ───────────────────────────────────────────────────────────
 const PROGRESS_MAP: Record<number, { label: string; index: number }> = {
   1: { label: "场景", index: 1 },
   2: { label: "填写", index: 2 },
@@ -143,22 +141,22 @@ function Toast({ status }: { status: CopyStatus }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
   const [step, setStep] = useState(0);
-  const [scene, setScene] = useState<Scene>("感谢");
-  const [recipient, setRecipient] = useState("最亲爱的妈妈");
-  const [sender, setSender] = useState("您的专属宝贝");
-  const [message, setMessage] = useState("妈妈给我转了200元，我想感谢她对我的疼爱和支持。");
-  const [amount, setAmount] = useState("200");
-  const [tone, setTone] = useState<Tone>("真诚");
-  const [selectedStyle, setSelectedStyle] = useState<Style>("复古收据");
+  const [scene, setScene] = useState<Scene>(DEFAULT_CREATE_GIFT_INPUT.occasion);
+  const [recipient, setRecipient] = useState(DEFAULT_CREATE_GIFT_INPUT.recipientName);
+  const [sender, setSender] = useState(DEFAULT_CREATE_GIFT_INPUT.senderName);
+  const [message, setMessage] = useState(DEFAULT_CREATE_GIFT_INPUT.originalMessage);
+  const [amount, setAmount] = useState(DEFAULT_CREATE_GIFT_INPUT.amountText ?? "");
+  const [tone, setTone] = useState<Tone>(DEFAULT_CREATE_GIFT_INPUT.tone);
+  const [selectedStyle, setSelectedStyle] = useState<Style>(DEFAULT_THEME);
   const [aiStatus, setAiStatus] = useState<AiStatus>("idle");
   const [copyStatus, setCopyStatus] = useState<CopyStatus>("idle");
 
   // Editable AI fields
-  const [editTitle, setEditTitle] = useState(AI_TITLE_DEFAULT);
-  const [editBody, setEditBody] = useState(AI_BODY_DEFAULT);
-  const [editQuote, setEditQuote] = useState(AI_QUOTE_DEFAULT);
-  const [editSignoff, setEditSignoff] = useState(AI_SIGNOFF_DEFAULT);
-  const [editButtonText, setEditButtonText] = useState(AI_BUTTON_DEFAULT);
+  const [editTitle, setEditTitle] = useState(MOCK_GENERATED_COPY.title);
+  const [editBody, setEditBody] = useState(MOCK_GENERATED_COPY.body);
+  const [editQuote, setEditQuote] = useState(MOCK_GENERATED_COPY.quote);
+  const [editSignoff, setEditSignoff] = useState(MOCK_GENERATED_COPY.signoff);
+  const [editButtonText, setEditButtonText] = useState(MOCK_GENERATED_COPY.buttonText);
   const [editingField, setEditingField] = useState<"title" | "body" | "quote" | "signoff" | "button" | null>(null);
 
   const LINK = `heartlink.app/to/${recipient.replace(/[^a-z0-9一-龥]/gi, "-").toLowerCase()}-a9f2`;
@@ -300,7 +298,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                {SCENE_OPTIONS.slice(0, 4).map(opt => {
+                {CENTRAL_SCENE_OPTIONS.slice(0, 4).map(opt => {
                   const active = scene === opt.label;
                   return (
                     <button key={opt.label} onClick={() => setScene(opt.label)}
@@ -317,7 +315,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
 
               {/* 小心意 — full width */}
               {(() => {
-                const opt = SCENE_OPTIONS[4];
+                const opt = CENTRAL_SCENE_OPTIONS[4];
                 const active = scene === opt.label;
                 return (
                   <button onClick={() => setScene(opt.label)}
@@ -346,7 +344,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                   <div style={{ padding: "3px 10px", borderRadius: 99, background: "#F3EDE3", display: "inline-flex", alignItems: "center", gap: 4 }}>
-                    <span style={{ color: "#C9A66B" }}>{SCENE_OPTIONS.find(s => s.label === scene)?.icon}</span>
+                    <span style={{ color: "#C9A66B" }}>{CENTRAL_SCENE_OPTIONS.find(s => s.label === scene)?.icon}</span>
                     <span style={{ fontFamily: "'Noto Sans SC', sans-serif", color: "#9B8E86", fontSize: 12, letterSpacing: 1 }}>{scene}</span>
                   </div>
                 </div>
@@ -384,7 +382,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
 
               <FormField label="语气风格">
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  {TONE_OPTIONS.map(t => (
+                  {CENTRAL_TONE_OPTIONS.map(t => (
                     <button key={t} onClick={() => setTone(t)}
                       style={{ padding: "6px 14px", borderRadius: 99, fontFamily: "'Noto Sans SC', sans-serif", fontSize: 13, letterSpacing: 1, cursor: "pointer", transition: "all 0.15s", background: tone === t ? "#473B35" : "#FFFFFF", color: tone === t ? "#FFFFFF" : "#9B8E86", border: `1px solid ${tone === t ? "#473B35" : "#EAE2D8"}` }}>
                       {t}
@@ -613,7 +611,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {STYLE_OPTIONS.map(opt => {
+                {CENTRAL_STYLE_OPTIONS.map(opt => {
                   const active = selectedStyle === opt.label;
                   return (
                     <button key={opt.label} onClick={() => setSelectedStyle(opt.label)}

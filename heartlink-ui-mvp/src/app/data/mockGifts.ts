@@ -36,3 +36,15 @@ export const MOCK_GIFT: Gift = {
   },
   status: "link-created",
 };
+
+export const MOCK_RECEIVER_GIFT = {
+  recipientName: DEFAULT_CREATE_GIFT_INPUT.recipientName,
+  occasion: DEFAULT_CREATE_GIFT_INPUT.occasion,
+  title: MOCK_GENERATED_COPY.title,
+  bodyParagraphs: [
+    "您资助的 200 元流动资金已妥妥到账，瞬间让我的小金库洒满了阳光。这不仅仅是一笔零花钱，更是您对我悄悄流露的纵容与疼爱。",
+    "愿岁月的长河里，您始终明朗、温暖，被时光温柔以待！",
+  ] as [string, string],
+  quote: MOCK_GENERATED_COPY.quote,
+  signoff: MOCK_GENERATED_COPY.signoff,
+};

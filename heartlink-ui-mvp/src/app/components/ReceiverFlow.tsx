@@ -1,6 +1,11 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Heart, Star, Zap, Gift, MessageCircle } from "lucide-react";
+import {
+  COMPLETION_TEXTS as CENTRAL_COMPLETION_TEXTS,
+  MOCK_RECEIVER_GIFT,
+  MOCK_RECEIVED_DATE,
+} from "../data";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 type ReceiverState = "loading" | "cover" | "letter" | "received" | "not-found" | "expired";
@@ -12,23 +17,13 @@ interface ReceiverFlowProps {
 }
 
 // ─── Copy constants ───────────────────────────────────────────────────────────
-const LETTER_TITLE = "妈妈，谢谢您。";
-const LETTER_BODY_P1 =
-  "您资助的 200 元流动资金已妥妥到账，瞬间让我的小金库洒满了阳光。这不仅仅是一笔零花钱，更是您对我悄悄流露的纵容与疼爱。";
-const LETTER_BODY_P2 =
-  "愿岁月的长河里，您始终明朗、温暖，被时光温柔以待！";
-const LETTER_QUOTE = "水中之灯，照亮夜航；人间词话，不及母爱之长。";
-const LETTER_SIGNOFF = "您的专属宝贝 敬呈";
-
-const COMPLETION_TEXTS: Record<Scene, string> = {
-  感谢: "这份感谢，已被好好收藏",
-  祝福: "祝福已送达，心意已珍藏",
-  道歉: "我理解了，谢谢你的勇气",
-  鼓励: "谢谢，我会加油的！",
-  小心意: "收到啦！爱意增幅 +1000%",
-};
-
-const RECEIVED_DATE = "2025 年 6 月 17 日";
+const RECEIVER_GIFT = MOCK_RECEIVER_GIFT;
+const CENTRAL_LETTER_TITLE = RECEIVER_GIFT.title;
+const CENTRAL_LETTER_BODY_P1 = RECEIVER_GIFT.bodyParagraphs[0];
+const CENTRAL_LETTER_BODY_P2 = RECEIVER_GIFT.bodyParagraphs[1];
+const CENTRAL_LETTER_QUOTE = RECEIVER_GIFT.quote;
+const CENTRAL_LETTER_SIGNOFF = RECEIVER_GIFT.signoff;
+const CENTRAL_RECEIVED_DATE = MOCK_RECEIVED_DATE;
 
 // ─── Scene icons (for decorative use) ────────────────────────────────────────
 function SceneIcon({ scene, size = 28, color = "#FFFFFF" }: { scene: Scene; size?: number; color?: string }) {
@@ -80,7 +75,7 @@ function SkeletonBlock({ width = "100%", height = 14, radius = 99, style }: { wi
 // ─── Main Component ───────────────────────────────────────────────────────────
 export function ReceiverFlow({ onBack }: ReceiverFlowProps) {
   const [state, setState] = useState<ReceiverState>("cover");
-  const [scene] = useState<Scene>("感谢");
+  const [scene] = useState<Scene>(RECEIVER_GIFT.occasion);
   const [isOpening, setIsOpening] = useState(false);
 
   // Auto-advance from loading
@@ -214,7 +209,7 @@ export function ReceiverFlow({ onBack }: ReceiverFlowProps) {
                     Acknowledgment Receipt
                   </p>
                   <h1 style={{ fontFamily: "'Noto Serif SC', serif", color: "#3F342F", fontSize: 26, letterSpacing: 4, margin: "0 0 20px", lineHeight: 1.35 }}>
-                    {LETTER_TITLE}
+                    {CENTRAL_LETTER_TITLE}
                   </h1>
                   <div style={{ height: 1, background: "#EAE2D8" }} />
                 </div>
@@ -222,28 +217,28 @@ export function ReceiverFlow({ onBack }: ReceiverFlowProps) {
                 {/* Body */}
                 <div style={{ padding: "22px 28px 0", display: "flex", flexDirection: "column", gap: 16 }}>
                   <p style={{ fontFamily: "'Noto Serif SC', serif", color: "#3F342F", fontSize: 15, lineHeight: 2.1, textIndent: "2em", letterSpacing: 0.5, margin: 0 }}>
-                    {LETTER_BODY_P1}
+                    {CENTRAL_LETTER_BODY_P1}
                   </p>
 
                   {/* Quote block */}
                   <div style={{ borderLeft: "3px solid #C9A66B", background: "#FAF7F0", borderRadius: "0 12px 12px 0", padding: "14px 18px" }}>
                     <p style={{ fontFamily: "'Lora', serif", color: "#9B8E86", fontSize: 14, lineHeight: 1.9, fontStyle: "italic", margin: 0, letterSpacing: 0.3 }}>
-                      "{LETTER_QUOTE}"
+                      "{CENTRAL_LETTER_QUOTE}"
                     </p>
                   </div>
 
                   <p style={{ fontFamily: "'Noto Serif SC', serif", color: "#3F342F", fontSize: 15, lineHeight: 2.1, textIndent: "2em", letterSpacing: 0.5, margin: 0 }}>
-                    {LETTER_BODY_P2}
+                    {CENTRAL_LETTER_BODY_P2}
                   </p>
 
                   {/* Signoff */}
                   <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 4, paddingBottom: 4 }}>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
                       <span style={{ fontFamily: "'Noto Serif SC', serif", color: "#9B8E86", fontSize: 13, letterSpacing: 2 }}>
-                        — {LETTER_SIGNOFF}
+                        — {CENTRAL_LETTER_SIGNOFF}
                       </span>
                       <span style={{ fontFamily: "'Lora', serif", color: "#C5BAB2", fontSize: 11, letterSpacing: 1 }}>
-                        {RECEIVED_DATE.split("年")[0]} · 以{scene}之名
+                        {CENTRAL_RECEIVED_DATE.split("年")[0]} · 以{scene}之名
                       </span>
                     </div>
                   </div>
@@ -282,28 +277,28 @@ export function ReceiverFlow({ onBack }: ReceiverFlowProps) {
                     Acknowledgment Receipt
                   </p>
                   <h1 style={{ fontFamily: "'Noto Serif SC', serif", color: "#3F342F", fontSize: 26, letterSpacing: 4, margin: "0 0 20px", lineHeight: 1.35 }}>
-                    {LETTER_TITLE}
+                    {CENTRAL_LETTER_TITLE}
                   </h1>
                   <div style={{ height: 1, background: "#EAE2D8" }} />
                 </div>
 
                 <div style={{ padding: "22px 28px 0", display: "flex", flexDirection: "column", gap: 16 }}>
                   <p style={{ fontFamily: "'Noto Serif SC', serif", color: "#3F342F", fontSize: 15, lineHeight: 2.1, textIndent: "2em", letterSpacing: 0.5, margin: 0 }}>
-                    {LETTER_BODY_P1}
+                    {CENTRAL_LETTER_BODY_P1}
                   </p>
                   <div style={{ borderLeft: "3px solid #C9A66B", background: "#FAF7F0", borderRadius: "0 12px 12px 0", padding: "14px 18px" }}>
                     <p style={{ fontFamily: "'Lora', serif", color: "#9B8E86", fontSize: 14, lineHeight: 1.9, fontStyle: "italic", margin: 0 }}>
-                      "{LETTER_QUOTE}"
+                      "{CENTRAL_LETTER_QUOTE}"
                     </p>
                   </div>
                   <p style={{ fontFamily: "'Noto Serif SC', serif", color: "#3F342F", fontSize: 15, lineHeight: 2.1, textIndent: "2em", letterSpacing: 0.5, margin: 0 }}>
-                    {LETTER_BODY_P2}
+                    {CENTRAL_LETTER_BODY_P2}
                   </p>
                   <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 4, paddingBottom: 4 }}>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
-                      <span style={{ fontFamily: "'Noto Serif SC', serif", color: "#9B8E86", fontSize: 13, letterSpacing: 2 }}>— {LETTER_SIGNOFF}</span>
+                      <span style={{ fontFamily: "'Noto Serif SC', serif", color: "#9B8E86", fontSize: 13, letterSpacing: 2 }}>— {CENTRAL_LETTER_SIGNOFF}</span>
                       <span style={{ fontFamily: "'Lora', serif", color: "#C5BAB2", fontSize: 11, letterSpacing: 1 }}>
-                        {RECEIVED_DATE.split("年")[0]} · 以{scene}之名
+                        {CENTRAL_RECEIVED_DATE.split("年")[0]} · 以{scene}之名
                       </span>
                     </div>
                   </div>
@@ -316,7 +311,7 @@ export function ReceiverFlow({ onBack }: ReceiverFlowProps) {
                     initial={{ scale: 0.95 }} animate={{ scale: 1 }}
                     transition={{ type: "spring", stiffness: 200, damping: 16 }}
                     style={{ width: "100%", padding: "16px 0", borderRadius: 99, background: "linear-gradient(135deg,#C9A66B 0%,#DFB87A 50%,#C9A66B 100%)", color: "#FFFFFF", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 15, letterSpacing: 2, border: "none", cursor: "default", boxShadow: "0 6px 28px rgba(201,166,107,0.4)" }}>
-                    {COMPLETION_TEXTS[scene]}
+                    {CENTRAL_COMPLETION_TEXTS[scene]}
                   </motion.button>
 
                   {/* Received confirmation */}
@@ -327,7 +322,7 @@ export function ReceiverFlow({ onBack }: ReceiverFlowProps) {
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <Heart size={10} color="#C9A66B" fill="#C9A66B" />
                       <span style={{ fontFamily: "'Noto Sans SC', sans-serif", color: "#C9A66B", fontSize: 12, letterSpacing: 1 }}>
-                        已于 {RECEIVED_DATE} 接收
+                        已于 {CENTRAL_RECEIVED_DATE} 接收
                       </span>
                       <Heart size={10} color="#C9A66B" fill="#C9A66B" />
                     </div>
