@@ -21,6 +21,8 @@ const MOCK_GENERATE_COPY_DELAY_MS = 750;
 const MOCK_GIFT_STORAGE_KEY = "heartlink_mock_gifts";
 const MOCK_AI_NETWORK_ERROR_TRIGGER = "__mock_network_error__";
 const MOCK_AI_FAILURE_TRIGGER = "__mock_ai_error__";
+const MOCK_AI_EMPTY_CONTENT_TRIGGER = "__mock_empty_content__";
+const MOCK_AI_UNAVAILABLE_TRIGGER = "__mock_ai_unavailable__";
 export const MOCK_EXPIRED_GIFT_TOKEN = "mock-heartlink-expired";
 const mockGiftStore = new Map<string, Gift>([
   [MOCK_GIFT_TOKEN, { ...MOCK_GIFT }],
@@ -97,7 +99,7 @@ export async function generateCopy(input: GenerateCopyInput): Promise<GenerateCo
 
   if (hasMissingRequiredText) {
     throw createAiGenerationError(
-      "ai-generation-failed",
+      "validation-empty",
       "Required copy generation input is empty.",
     );
   }
@@ -108,6 +110,20 @@ export async function generateCopy(input: GenerateCopyInput): Promise<GenerateCo
     throw createAiGenerationError(
       "network-error",
       "Mock network error while generating copy.",
+    );
+  }
+
+  if (normalizedMessage.includes(MOCK_AI_EMPTY_CONTENT_TRIGGER)) {
+    throw createAiGenerationError(
+      "ai-content-empty",
+      "Mock AI returned empty copy content.",
+    );
+  }
+
+  if (normalizedMessage.includes(MOCK_AI_UNAVAILABLE_TRIGGER)) {
+    throw createAiGenerationError(
+      "ai-service-unavailable",
+      "Mock AI service is unavailable.",
     );
   }
 

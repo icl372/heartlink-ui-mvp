@@ -33,8 +33,16 @@ export type {
 } from "./ui";
 
 export type {
+  AiErrorUiStatus,
   AiGenerationError,
+  AiGenerationErrorCode,
   AppError,
   AppErrorCode,
   CopyLinkError,
+} from "./errors";
+
+export {
+  AI_ERROR_UI_STATUS_MAP,
+  getAiErrorUiStatus,
+  getAppErrorCode,
 } from "./errors";

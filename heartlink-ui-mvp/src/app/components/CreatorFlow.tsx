@@ -15,6 +15,7 @@ import {
 } from "../data";
 import { createGiftUrl } from "../lib";
 import { createGift, generateCopy } from "../services";
+import { getAiErrorUiStatus } from "../types";
 import type {
   AiGenerationStatus,
   CopyLinkStatus,
@@ -278,11 +279,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
   };
 
   const resolveAiStatusFromError = (error: unknown): AiStatus => {
-    const code = typeof error === "object" && error !== null && "code" in error
-      ? (error as { code?: unknown }).code
-      : undefined;
-
-    return code === "network-error" ? "network-error" : "failed";
+    return getAiErrorUiStatus(error);
   };
 
   const runGenerateCopy = async () => {
