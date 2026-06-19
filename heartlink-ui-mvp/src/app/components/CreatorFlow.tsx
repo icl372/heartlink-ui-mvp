@@ -50,12 +50,20 @@ function getLocalMockBaseUrl() {
 
 async function copyTextToClipboard(text: string) {
   try {
-    if (navigator.clipboard?.writeText) {
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(text);
       return true;
     }
   } catch {
     // Fall back for mobile browsers that expose Clipboard API but reject it.
+  }
+
+  if (
+    typeof document === "undefined"
+    || !document.body
+    || typeof document.execCommand !== "function"
+  ) {
+    return false;
   }
 
   const textarea = document.createElement("textarea");
@@ -304,7 +312,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
   };
 
   const handleGenerate = () => {
-    if (!message.trim() || !recipient.trim()) return;
+    if (!isReadyToGenerate) return;
     void runGenerateCopy();
   };
 
@@ -349,6 +357,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
     }
   };
 
+  const isReadyToGenerate = Boolean(message.trim() && recipient.trim());
   const showProgress = step >= FIRST_PROGRESS_STEP && step <= LAST_PROGRESS_STEP;
   const progressInfo = PROGRESS_MAP[step];
 
@@ -554,8 +563,8 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
 
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
                 <button onClick={handleGenerate}
-                  disabled={!message.trim() || !recipient.trim()}
-                  style={{ width: "100%", padding: "16px 0", borderRadius: 99, background: message.trim() && recipient.trim() ? "#473B35" : "#9B8E86", color: "#FFFFFF", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 15, letterSpacing: 3, border: "none", cursor: message.trim() ? "pointer" : "not-allowed", boxShadow: message.trim() ? "0 4px 20px rgba(71,59,53,0.25)" : "none", opacity: message.trim() && recipient.trim() ? 1 : 0.5, transition: "all 0.2s" }}>
+                  disabled={!isReadyToGenerate}
+                  style={{ width: "100%", padding: "16px 0", borderRadius: 99, background: isReadyToGenerate ? "#473B35" : "#9B8E86", color: "#FFFFFF", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 15, letterSpacing: 3, border: "none", cursor: isReadyToGenerate ? "pointer" : "not-allowed", boxShadow: isReadyToGenerate ? "0 4px 20px rgba(71,59,53,0.25)" : "none", opacity: isReadyToGenerate ? 1 : 0.5, transition: "all 0.2s" }}>
                   AI 生成专属文案
                 </button>
               </div>
