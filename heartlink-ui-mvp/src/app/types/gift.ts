@@ -42,6 +42,31 @@ export interface Gift {
   expiresAt?: string;
 }
 
+export interface GiftRecord {
+  id: string;
+  token: string;
+  recipient_name: string;
+  sender_name: string;
+  occasion: GiftOccasion;
+  tone: GiftTone;
+  amount_text: string | null;
+  original_message: string;
+  cover_text: string | null;
+  title: string;
+  body: string;
+  quote: string;
+  button_text: string;
+  accepted_text: string | null;
+  theme: GiftTheme;
+  opened_count: number;
+  accepted_count: number;
+  created_at: string;
+  updated_at: string;
+  accepted_at: string | null;
+  expires_at: string | null;
+  is_deleted: boolean;
+}
+
 export interface CreateGiftInput {
   recipientName: string;
   senderName: string;

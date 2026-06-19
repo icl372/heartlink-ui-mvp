@@ -5,6 +5,7 @@ export type {
   Gift,
   GiftCopy,
   GiftOccasion,
+  GiftRecord,
   GiftStatus,
   GiftTheme,
   GiftTone,
