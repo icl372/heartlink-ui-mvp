@@ -19,6 +19,29 @@ export interface GenerateCopyResult {
   acceptedText: string;
 }
 
+export const GENERATE_COPY_INPUT_FIELDS = [
+  "recipientName",
+  "senderName",
+  "occasion",
+  "tone",
+  "amountText",
+  "originalMessage",
+] as const satisfies readonly (keyof GenerateCopyInput)[];
+
+export const GENERATE_COPY_REQUIRED_TEXT_FIELDS = [
+  "recipientName",
+  "originalMessage",
+] as const satisfies readonly (keyof GenerateCopyInput)[];
+
+export const GENERATE_COPY_OUTPUT_FIELDS = [
+  "coverText",
+  "title",
+  "body",
+  "quote",
+  "buttonText",
+  "acceptedText",
+] as const satisfies readonly (keyof GenerateCopyResult)[];
+
 export type AiGenerationStatus =
   | "idle"
   | "generating"

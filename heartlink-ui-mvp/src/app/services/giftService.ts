@@ -4,6 +4,7 @@ import {
   MOCK_GIFT_TOKEN,
 } from "../data";
 import { createGiftUrl, generateGiftToken } from "../lib";
+import { GENERATE_COPY_REQUIRED_TEXT_FIELDS } from "../types";
 import type {
   AcceptGiftResult,
   AiGenerationError,
@@ -89,7 +90,12 @@ function getStoredOrDefaultGift(token: string) {
 export async function generateCopy(input: GenerateCopyInput): Promise<GenerateCopyResult> {
   await delay(MOCK_GENERATE_COPY_DELAY_MS);
 
-  if (!input.recipientName.trim() || !input.originalMessage.trim()) {
+  const hasMissingRequiredText = GENERATE_COPY_REQUIRED_TEXT_FIELDS.some(field => {
+    const value = input[field];
+    return typeof value === "string" && !value.trim();
+  });
+
+  if (hasMissingRequiredText) {
     throw createAiGenerationError(
       "ai-generation-failed",
       "Required copy generation input is empty.",

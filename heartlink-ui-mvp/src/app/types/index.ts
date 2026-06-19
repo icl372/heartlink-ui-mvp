@@ -16,6 +16,12 @@ export type {
   GenerateCopyResult,
 } from "./ai";
 
+export {
+  GENERATE_COPY_INPUT_FIELDS,
+  GENERATE_COPY_OUTPUT_FIELDS,
+  GENERATE_COPY_REQUIRED_TEXT_FIELDS,
+} from "./ai";
+
 export type {
   AppMode,
   CopyLinkStatus,
