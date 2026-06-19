@@ -7,12 +7,10 @@ import {
   MOCK_RECEIVED_DATE,
 } from "../data";
 import { acceptGift, getGiftByToken } from "../services";
-import type { AppError, Gift as GiftData } from "../types";
+import type { AppError, Gift as GiftData, GiftOccasion, ReceiverState } from "../types";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
-type ReceiverState = "loading" | "cover" | "letter" | "received" | "not-found" | "expired";
-
-type Scene = "感谢" | "祝福" | "道歉" | "鼓励" | "小心意";
+type Scene = GiftOccasion;
 
 interface ReceiverFlowProps {
   onBack: () => void;
@@ -21,6 +19,27 @@ interface ReceiverFlowProps {
 
 // ─── Copy constants ───────────────────────────────────────────────────────────
 const CENTRAL_RECEIVED_DATE = MOCK_RECEIVED_DATE;
+
+const RECEIVER_STATES = {
+  loading: "loading",
+  cover: "cover",
+  letter: "letter",
+  received: "received",
+  notFound: "not-found",
+  expired: "expired",
+} as const satisfies Record<string, ReceiverState>;
+
+function getAppErrorCode(error: unknown) {
+  return typeof error === "object" && error !== null && "code" in error
+    ? (error as AppError).code
+    : "unknown";
+}
+
+function getReceiverErrorState(error: unknown): ReceiverState {
+  return getAppErrorCode(error) === "gift-expired"
+    ? RECEIVER_STATES.expired
+    : RECEIVER_STATES.notFound;
+}
 
 // ─── Scene icons (for decorative use) ────────────────────────────────────────
 function SceneIcon({ scene, size = 28, color = "#FFFFFF" }: { scene: Scene; size?: number; color?: string }) {
@@ -71,7 +90,7 @@ function SkeletonBlock({ width = "100%", height = 14, radius = 99, style }: { wi
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
-  const [state, setState] = useState<ReceiverState>("loading");
+  const [state, setState] = useState<ReceiverState>(RECEIVER_STATES.loading);
   const [gift, setGift] = useState<GiftData | null>(null);
   const [isOpening, setIsOpening] = useState(false);
   const receiverToken = token ?? MOCK_GIFT_TOKEN;
@@ -89,19 +108,16 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
     let cancelled = false;
 
     async function loadGift() {
-      setState("loading");
+      setState(RECEIVER_STATES.loading);
 
       try {
         const loadedGift = await getGiftByToken(receiverToken);
         if (cancelled) return;
         setGift(loadedGift);
-        setState("cover");
+        setState(RECEIVER_STATES.cover);
       } catch (error) {
         if (cancelled) return;
-        const code = typeof error === "object" && error !== null && "code" in error
-          ? (error as AppError).code
-          : "unknown";
-        setState(code === "gift-expired" ? "expired" : "not-found");
+        setState(getReceiverErrorState(error));
       }
     }
 
@@ -112,30 +128,27 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
 
   const handleOpen = () => {
     setIsOpening(true);
-    setTimeout(() => { setState("letter"); setIsOpening(false); }, 700);
+    setTimeout(() => { setState(RECEIVER_STATES.letter); setIsOpening(false); }, 700);
   };
 
   const handleReceive = async () => {
     try {
       await acceptGift(gift?.token ?? receiverToken);
-      setState("received");
+      setState(RECEIVER_STATES.received);
     } catch (error) {
-      const code = typeof error === "object" && error !== null && "code" in error
-        ? (error as AppError).code
-        : "unknown";
-      setState(code === "gift-expired" ? "expired" : "not-found");
+      setState(getReceiverErrorState(error));
     }
   };
 
   const handleViewSample = async () => {
-    setState("loading");
+    setState(RECEIVER_STATES.loading);
 
     try {
       const loadedGift = await getGiftByToken(MOCK_GIFT_TOKEN);
       setGift(loadedGift);
-      setState("cover");
+      setState(RECEIVER_STATES.cover);
     } catch {
-      setState("not-found");
+      setState(RECEIVER_STATES.notFound);
     }
   };
 
@@ -143,14 +156,14 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
     <div style={{ minHeight: "100vh", width: "100%", display: "flex", justifyContent: "center", background: "#FAF7F0", position: "relative" }}>
 
       {/* Floating particles for received state */}
-      {state === "received" && <FloatingHearts />}
+      {state === RECEIVER_STATES.received && <FloatingHearts />}
 
       {/* ── Content ── */}
       <div style={{ width: "100%", maxWidth: 390, position: "relative", zIndex: 1 }}>
         <AnimatePresence mode="wait">
 
           {/* ── Loading ──────────────────────────────────────────────────── */}
-          {state === "loading" && (
+          {state === RECEIVER_STATES.loading && (
             <motion.div key="loading"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100vh", padding: "0 32px" }}>
@@ -174,7 +187,7 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
           )}
 
           {/* ── Cover ────────────────────────────────────────────────────── */}
-          {state === "cover" && (
+          {state === RECEIVER_STATES.cover && (
             <motion.div key="cover"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 0.97 }}
               transition={{ duration: 0.5 }}
@@ -238,7 +251,7 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
           )}
 
           {/* ── Letter ───────────────────────────────────────────────────── */}
-          {state === "letter" && (
+          {state === RECEIVER_STATES.letter && (
             <motion.div key="letter"
               initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
               transition={{ duration: 0.5, ease: "easeOut" }}
@@ -309,7 +322,7 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
           )}
 
           {/* ── Received ─────────────────────────────────────────────────── */}
-          {state === "received" && (
+          {state === RECEIVER_STATES.received && (
             <motion.div key="received"
               initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
               transition={{ duration: 0.5, ease: "easeOut" }}
@@ -382,7 +395,7 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
           )}
 
           {/* ── Not Found ─────────────────────────────────────────────────── */}
-          {state === "not-found" && (
+          {state === RECEIVER_STATES.notFound && (
             <motion.div key="not-found"
               initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
               style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", padding: "0 28px" }}>
@@ -417,7 +430,7 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
           )}
 
           {/* ── Expired ───────────────────────────────────────────────────── */}
-          {state === "expired" && (
+          {state === RECEIVER_STATES.expired && (
             <motion.div key="expired"
               initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
               style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", padding: "0 28px" }}>
