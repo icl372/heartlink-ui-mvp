@@ -13,6 +13,7 @@ import {
   THEME_OPTIONS,
   TONE_OPTIONS as CENTRAL_TONE_OPTIONS,
 } from "../data";
+import { createGiftUrl } from "../lib";
 import { createGift, generateCopy } from "../services";
 import type {
   AiGenerationStatus,
@@ -38,14 +39,6 @@ const MOCK_PREVIEW_TOKEN = "mock-heartlink-a9f2";
 
 interface CreatorFlowProps {
   onViewReceiver: () => void;
-}
-
-function getLocalMockBaseUrl() {
-  if (typeof window !== "undefined" && window.location.origin) {
-    return window.location.origin;
-  }
-
-  return "http://localhost:5173";
 }
 
 async function copyTextToClipboard(text: string) {
@@ -252,7 +245,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
   const [generatedLink, setGeneratedLink] = useState("");
   const generateRequestIdRef = useRef(0);
 
-  const fallbackLink = `${getLocalMockBaseUrl()}/to/${MOCK_PREVIEW_TOKEN}`;
+  const fallbackLink = createGiftUrl(MOCK_PREVIEW_TOKEN);
   const successLink = generatedLink || fallbackLink;
 
   // Go back, clamped to 0

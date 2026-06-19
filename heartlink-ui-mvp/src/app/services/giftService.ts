@@ -3,6 +3,7 @@ import {
   MOCK_GIFT,
   MOCK_GIFT_TOKEN,
 } from "../data";
+import { createGiftUrl, generateGiftToken } from "../lib";
 import type {
   AcceptGiftResult,
   AiGenerationError,
@@ -34,22 +35,6 @@ function createAiGenerationError(code: AiGenerationError["code"], message: strin
     message,
     retryable: true,
   };
-}
-
-function getMockBaseUrl() {
-  if (typeof window !== "undefined" && window.location.origin) {
-    return window.location.origin;
-  }
-
-  return "http://localhost:5173";
-}
-
-function createMockGiftUrl(token: string) {
-  return `${getMockBaseUrl()}/to/${token}`;
-}
-
-function createMockGiftToken() {
-  return `mock-heartlink-${Date.now().toString(36)}`;
 }
 
 function readStoredMockGifts(): Record<string, Gift> {
@@ -92,7 +77,7 @@ function getStoredOrDefaultGift(token: string) {
   if (token === MOCK_GIFT_TOKEN) {
     const defaultGift = {
       ...MOCK_GIFT,
-      giftUrl: createMockGiftUrl(MOCK_GIFT_TOKEN),
+      giftUrl: createGiftUrl(MOCK_GIFT_TOKEN),
     };
     mockGiftStore.set(token, defaultGift);
     return defaultGift;
@@ -133,8 +118,8 @@ export async function generateCopy(input: GenerateCopyInput): Promise<GenerateCo
 export async function createGift(input: CreateGiftInput): Promise<CreateGiftResult> {
   await delay();
 
-  const token = createMockGiftToken();
-  const giftUrl = createMockGiftUrl(token);
+  const token = generateGiftToken();
+  const giftUrl = createGiftUrl(token);
 
   const gift: Gift = {
     ...MOCK_GIFT,
