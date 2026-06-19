@@ -13,5 +13,9 @@ export {
   DEFAULT_LOCAL_APP_ORIGIN,
   GIFT_ROUTE_PREFIX,
   createGiftUrl,
+  getGiftTokenFromHash,
+  getGiftTokenFromLocation,
+  getGiftTokenFromPathname,
+  getGiftTokenFromSearch,
   getLocalAppOrigin,
 } from "./giftUrl";

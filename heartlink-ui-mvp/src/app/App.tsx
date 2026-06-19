@@ -1,16 +1,14 @@
 import { useState } from "react";
 import { CreatorFlow } from "./components/CreatorFlow";
 import { ReceiverFlow } from "./components/ReceiverFlow";
+import { getGiftTokenFromLocation } from "./lib";
 
 /* MARKER-MAKE-KIT-INVOKED */
 
 type AppMode = "creator" | "receiver";
 
 function getReceiverTokenFromPath() {
-  if (typeof window === "undefined") return undefined;
-
-  const match = window.location.pathname.match(/^\/to\/([^/]+)$/);
-  return match?.[1] ? decodeURIComponent(match[1]) : undefined;
+  return getGiftTokenFromLocation();
 }
 
 export default function App() {
