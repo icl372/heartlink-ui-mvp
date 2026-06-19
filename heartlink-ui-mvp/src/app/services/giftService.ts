@@ -92,6 +92,9 @@ function getStoredOrDefaultGift(token: string) {
 export async function generateCopy(input: GenerateCopyInput): Promise<GenerateCopyResult> {
   await delay(MOCK_GENERATE_COPY_DELAY_MS);
 
+  // Future AI integration point: replace the mock branch below with a call to
+  // our own server function. The browser must never call AI providers directly
+  // or contain provider keys.
   const hasMissingRequiredText = GENERATE_COPY_REQUIRED_TEXT_FIELDS.some(field => {
     const value = input[field];
     return typeof value === "string" && !value.trim();
