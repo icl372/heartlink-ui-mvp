@@ -2,9 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Heart, Star, Zap, Gift, MessageCircle } from "lucide-react";
 import {
-  COMPLETION_TEXTS as CENTRAL_COMPLETION_TEXTS,
   MOCK_GIFT_TOKEN,
-  MOCK_RECEIVED_DATE,
 } from "../data";
 import { acceptGift, getGiftByToken } from "../services";
 import type { AppError, Gift as GiftData, GiftOccasion, ReceiverState } from "../types";
@@ -16,9 +14,6 @@ interface ReceiverFlowProps {
   onBack: () => void;
   token?: string;
 }
-
-// ─── Copy constants ───────────────────────────────────────────────────────────
-const CENTRAL_RECEIVED_DATE = MOCK_RECEIVED_DATE;
 
 const RECEIVER_STATES = {
   loading: "loading",
@@ -39,6 +34,26 @@ function getReceiverErrorState(error: unknown): ReceiverState {
   return getAppErrorCode(error) === "gift-expired"
     ? RECEIVER_STATES.expired
     : RECEIVER_STATES.notFound;
+}
+
+function getCreatedDateLabel(createdAt: string | undefined, scene: Scene) {
+  if (!createdAt) return `以${scene}之名`;
+
+  const year = new Date(createdAt).getFullYear();
+  return Number.isFinite(year) ? `${year} · 以${scene}之名` : `以${scene}之名`;
+}
+
+function formatAcceptedDate(acceptedAt: string | null | undefined) {
+  if (!acceptedAt) return "";
+
+  const date = new Date(acceptedAt);
+  if (Number.isNaN(date.getTime())) return "";
+
+  return new Intl.DateTimeFormat("zh-CN", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  }).format(date);
 }
 
 // ─── Scene icons (for decorative use) ────────────────────────────────────────
@@ -102,6 +117,11 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
   const centralLetterBodyP2 = bodyParagraphs[1] ?? "";
   const centralLetterQuote = gift?.copy.quote ?? "";
   const centralLetterSignoff = gift?.copy.signoff ?? "";
+  const coverText = gift?.copy.coverText ?? "";
+  const receiverButtonText = gift?.copy.buttonText?.trim() || "收下心意";
+  const receivedText = gift?.copy.acceptedText?.trim() || "这份心意已被好好收藏";
+  const createdDateLabel = getCreatedDateLabel(gift?.createdAt, scene);
+  const acceptedDateLabel = formatAcceptedDate(gift?.acceptedAt);
 
   // Load mock gift through the service boundary.
   useEffect(() => {
@@ -133,7 +153,16 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
 
   const handleReceive = async () => {
     try {
-      await acceptGift(gift?.token ?? receiverToken);
+      const result = await acceptGift(gift?.token ?? receiverToken);
+      setGift(currentGift => currentGift
+        ? {
+          ...currentGift,
+          status: "accepted",
+          acceptedAt: result.acceptedAt,
+          acceptedCount: (currentGift.acceptedCount ?? 0) + 1,
+          updatedAt: result.acceptedAt,
+        }
+        : currentGift);
       setState(RECEIVER_STATES.received);
     } catch (error) {
       setState(getReceiverErrorState(error));
@@ -215,7 +244,7 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
                   A message for you
                 </p>
                 <h1 style={{ fontFamily: "'Noto Serif SC', serif", color: "#3F342F", fontSize: 22, letterSpacing: 5, textAlign: "center", margin: "0 0 6px", lineHeight: 1.4 }}>
-                  致：最亲爱的妈妈
+                  致：{gift?.recipientName ?? ""}
                 </h1>
 
                 {/* Ornament */}
@@ -225,8 +254,8 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
                   <div style={{ width: 20, height: 1, background: "#C9A66B", opacity: 0.4 }} />
                 </div>
 
-                <p style={{ fontFamily: "'Noto Serif SC', serif", color: "#9B8E86", fontSize: 14, lineHeight: 2, textAlign: "center", letterSpacing: 1, margin: "0 0 40px" }}>
-                  在这琐碎而温热的日常里<br />有一份心意请您亲启
+                <p style={{ fontFamily: "'Noto Serif SC', serif", color: "#9B8E86", fontSize: 14, lineHeight: 2, textAlign: "center", letterSpacing: 1, margin: "0 0 40px", whiteSpace: "pre-line" }}>
+                  {coverText}
                 </p>
 
                 {/* Open button */}
@@ -297,7 +326,7 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
                         — {centralLetterSignoff}
                       </span>
                       <span style={{ fontFamily: "'Lora', serif", color: "#C5BAB2", fontSize: 11, letterSpacing: 1 }}>
-                        {CENTRAL_RECEIVED_DATE.split("年")[0]} · 以{scene}之名
+                        {createdDateLabel}
                       </span>
                     </div>
                   </div>
@@ -311,7 +340,7 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
                     onClick={handleReceive}
                     whileTap={{ scale: 0.97 }}
                     style={{ width: "100%", padding: "16px 0", borderRadius: 99, background: "#473B35", color: "#FFFFFF", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 15, letterSpacing: 2, border: "none", cursor: "pointer", boxShadow: "0 6px 24px rgba(71,59,53,0.25)" }}>
-                    点击接收我的爱心电波
+                    {receiverButtonText}
                   </motion.button>
                   <p style={{ fontFamily: "'Noto Sans SC', sans-serif", color: "#C5BAB2", fontSize: 11, textAlign: "center", letterSpacing: 1, margin: "12px 0 0" }}>
                     这份心意只为你准备
@@ -357,7 +386,7 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
                       <span style={{ fontFamily: "'Noto Serif SC', serif", color: "#9B8E86", fontSize: 13, letterSpacing: 2 }}>— {centralLetterSignoff}</span>
                       <span style={{ fontFamily: "'Lora', serif", color: "#C5BAB2", fontSize: 11, letterSpacing: 1 }}>
-                        {CENTRAL_RECEIVED_DATE.split("年")[0]} · 以{scene}之名
+                        {createdDateLabel}
                       </span>
                     </div>
                   </div>
@@ -370,7 +399,7 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
                     initial={{ scale: 0.95 }} animate={{ scale: 1 }}
                     transition={{ type: "spring", stiffness: 200, damping: 16 }}
                     style={{ width: "100%", padding: "16px 0", borderRadius: 99, background: "linear-gradient(135deg,#C9A66B 0%,#DFB87A 50%,#C9A66B 100%)", color: "#FFFFFF", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 15, letterSpacing: 2, border: "none", cursor: "default", boxShadow: "0 6px 28px rgba(201,166,107,0.4)" }}>
-                    {CENTRAL_COMPLETION_TEXTS[scene]}
+                    {receivedText}
                   </motion.button>
 
                   {/* Received confirmation */}
@@ -381,7 +410,7 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <Heart size={10} color="#C9A66B" fill="#C9A66B" />
                       <span style={{ fontFamily: "'Noto Sans SC', sans-serif", color: "#C9A66B", fontSize: 12, letterSpacing: 1 }}>
-                        已于 {CENTRAL_RECEIVED_DATE} 接收
+                        {acceptedDateLabel ? `已于 ${acceptedDateLabel} 接收` : "这份心意已被好好收藏"}
                       </span>
                       <Heart size={10} color="#C9A66B" fill="#C9A66B" />
                     </div>

@@ -238,6 +238,7 @@ export async function createGift(input: CreateGiftInput): Promise<CreateGiftResu
 
   const token = generateGiftToken();
   const giftUrl = createGiftUrl(token);
+  const now = new Date().toISOString();
 
   const gift: Gift = {
     ...MOCK_GIFT,
@@ -252,6 +253,12 @@ export async function createGift(input: CreateGiftInput): Promise<CreateGiftResu
     token,
     giftUrl,
     status: "link-created",
+    createdAt: now,
+    updatedAt: now,
+    expiresAt: null,
+    openedCount: 0,
+    acceptedCount: 0,
+    acceptedAt: null,
   };
 
   mockGiftStore.set(token, gift);
@@ -309,9 +316,21 @@ export async function acceptGift(token: string): Promise<AcceptGiftResult> {
     throw error;
   }
 
+  const acceptedAt = new Date().toISOString();
+  const acceptedGift: Gift = {
+    ...gift,
+    status: "accepted",
+    acceptedAt,
+    acceptedCount: (gift.acceptedCount ?? 0) + 1,
+    updatedAt: acceptedAt,
+  };
+
+  mockGiftStore.set(token, acceptedGift);
+  writeStoredMockGift(acceptedGift);
+
   return {
     token,
-    acceptedAt: new Date().toISOString(),
+    acceptedAt,
     acceptedText: gift.copy.acceptedText ?? "",
   };
 }

@@ -242,6 +242,8 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
   const [editQuote, setEditQuote] = useState(MOCK_GENERATED_COPY.quote);
   const [editSignoff, setEditSignoff] = useState(MOCK_GENERATED_COPY.signoff);
   const [editButtonText, setEditButtonText] = useState(MOCK_GENERATED_COPY.buttonText);
+  const [generatedCoverText, setGeneratedCoverText] = useState(MOCK_GENERATED_COPY.coverText);
+  const [generatedAcceptedText, setGeneratedAcceptedText] = useState(MOCK_GENERATED_COPY.acceptedText);
   const [editingField, setEditingField] = useState<EditingField>(null);
   const [generatedLink, setGeneratedLink] = useState("");
   const generateRequestIdRef = useRef(0);
@@ -276,6 +278,8 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
     setEditQuote(copy.quote);
     setEditSignoff(copy.signoff);
     setEditButtonText(copy.buttonText);
+    setGeneratedCoverText(copy.coverText);
+    setGeneratedAcceptedText(copy.acceptedText);
   };
 
   const resolveAiStatusFromError = (error: unknown): AiStatus => {
@@ -319,13 +323,13 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
     originalMessage: message,
     amountText: amount.trim() ? amount : undefined,
     copy: {
-      coverText: MOCK_GENERATED_COPY.coverText,
+      coverText: generatedCoverText,
       title: editTitle,
       body: editBody,
       quote: editQuote,
       buttonText: editButtonText,
       signoff: editSignoff,
-      acceptedText: MOCK_GENERATED_COPY.acceptedText,
+      acceptedText: generatedAcceptedText,
     },
   });
 

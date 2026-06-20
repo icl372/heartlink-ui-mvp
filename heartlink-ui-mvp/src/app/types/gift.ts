@@ -37,9 +37,12 @@ export interface Gift {
   copy: GiftCopy;
   status: GiftStatus;
   createdAt?: string;
+  updatedAt?: string;
   openedAt?: string;
   acceptedAt?: string;
-  expiresAt?: string;
+  expiresAt?: string | null;
+  openedCount?: number;
+  acceptedCount?: number;
 }
 
 export interface GiftRecord {
