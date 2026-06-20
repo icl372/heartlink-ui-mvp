@@ -33,7 +33,22 @@ const SUPPORTED_DEEPSEEK_MODELS = new Set([
 const REQUEST_TIMEOUT_MS = 12_000;
 const SAFE_BUTTON_TEXT = "收下心意";
 const SAFE_BUTTON_TEXT_ALLOWLIST = new Set([SAFE_BUTTON_TEXT]);
-const UNSAFE_BUTTON_TEXT_TERMS = [
+const SAFE_ACCEPTED_TEXT = "这份心意已被珍藏";
+const SAFE_ACCEPTED_TEXT_ALLOWLIST = new Set([
+  SAFE_ACCEPTED_TEXT,
+  "已收下这份心意",
+  "这份心意已送达",
+  "心意已被好好收下",
+]);
+const SAFE_COVER_TEXT = "有一份心意送给你";
+const SAFE_COVER_TEXT_ALLOWLIST = new Set([
+  SAFE_COVER_TEXT,
+  "这是一份小小心意",
+  "有人为你准备了心意",
+  "打开这份心意",
+]);
+const MAX_SHORT_UI_TEXT_LENGTH = 12;
+const UNSAFE_SHORT_UI_TEXT_TERMS = [
   "红包",
   "现金",
   "提现",
@@ -47,6 +62,9 @@ const UNSAFE_BUTTON_TEXT_TERMS = [
   "奖励",
   "收钱",
   "领钱",
+  "一封家书",
+  "一封信",
+  "领取惊喜",
 ];
 
 function sendError(
@@ -108,7 +126,11 @@ function buildMessages(input: GenerateCopyInput) {
         "This product is a HeartLink blessing-card experience, not a red-packet, cash, payment, collection, transfer, withdrawal, or reward tool.",
         "Even if the user mentions money, amounts, transfers, or red packets, express only gratitude and care; never imply platform money, receiving money, sending money, or payment.",
         `buttonText is a fixed product interaction label, not creative copy. Set buttonText exactly to \"${SAFE_BUTTON_TEXT}\".`,
-        "Never use button text that implies red packets, cash, receiving money, collection, transfer, payment, withdrawal, benefits, or rewards.",
+        `coverText and acceptedText are short UI labels, not body copy. Each must be at most ${MAX_SHORT_UI_TEXT_LENGTH} Chinese characters.`,
+        `Set coverText to exactly one of: \"${[...SAFE_COVER_TEXT_ALLOWLIST].join("\", \"")}\".`,
+        `Set acceptedText to exactly one of: \"${[...SAFE_ACCEPTED_TEXT_ALLOWLIST].join("\", \"")}\".`,
+        "Put longer blessings only in body. Never use short UI text that implies red packets, cash, receiving money, collection, transfer, payment, withdrawal, benefits, rewards, a letter, or receiving a surprise.",
+        "Keep title concise, quote brief, and body limited to two or three short paragraphs.",
         "Do not include markdown fences, explanations, or extra keys.",
       ].join(" "),
     },
@@ -128,7 +150,7 @@ function buildMessages(input: GenerateCopyInput) {
 
 function sanitizeButtonText(value: unknown): string {
   const normalizedValue = typeof value === "string" ? value.trim() : "";
-  const containsUnsafeTerm = UNSAFE_BUTTON_TEXT_TERMS.some(term => normalizedValue.includes(term));
+  const containsUnsafeTerm = UNSAFE_SHORT_UI_TEXT_TERMS.some(term => normalizedValue.includes(term));
 
   if (!normalizedValue || containsUnsafeTerm || !SAFE_BUTTON_TEXT_ALLOWLIST.has(normalizedValue)) {
     return SAFE_BUTTON_TEXT;
@@ -138,16 +160,38 @@ function sanitizeButtonText(value: unknown): string {
   return SAFE_BUTTON_TEXT;
 }
 
+function sanitizeShortUiText(
+  value: unknown,
+  allowlist: Set<string>,
+  fallback: string,
+): string {
+  const normalizedValue = typeof value === "string" ? value.trim() : "";
+  const isTooLong = Array.from(normalizedValue).length > MAX_SHORT_UI_TEXT_LENGTH;
+  const containsUnsafeTerm = UNSAFE_SHORT_UI_TEXT_TERMS.some(term => normalizedValue.includes(term));
+
+  if (!normalizedValue || isTooLong || containsUnsafeTerm || !allowlist.has(normalizedValue)) {
+    return fallback;
+  }
+
+  return normalizedValue;
+}
+
+function sanitizeAcceptedText(value: unknown): string {
+  return sanitizeShortUiText(value, SAFE_ACCEPTED_TEXT_ALLOWLIST, SAFE_ACCEPTED_TEXT);
+}
+
+function sanitizeCoverText(value: unknown): string {
+  return sanitizeShortUiText(value, SAFE_COVER_TEXT_ALLOWLIST, SAFE_COVER_TEXT);
+}
+
 function readGeneratedCopy(payload: unknown): GenerateCopyResult | undefined {
   if (!isRecord(payload)) return undefined;
 
   const fields = [
-    "coverText",
     "title",
     "body",
     "quote",
     "signoff",
-    "acceptedText",
   ] as const;
 
   if (!fields.every(field => typeof payload[field] === "string" && payload[field].trim())) {
@@ -155,13 +199,13 @@ function readGeneratedCopy(payload: unknown): GenerateCopyResult | undefined {
   }
 
   return {
-    coverText: payload.coverText as string,
+    coverText: sanitizeCoverText(payload.coverText),
     title: payload.title as string,
     body: payload.body as string,
     quote: payload.quote as string,
     buttonText: sanitizeButtonText(payload.buttonText),
     signoff: payload.signoff as string,
-    acceptedText: payload.acceptedText as string,
+    acceptedText: sanitizeAcceptedText(payload.acceptedText),
   };
 }
 
