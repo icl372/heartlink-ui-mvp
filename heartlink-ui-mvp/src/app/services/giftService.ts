@@ -23,6 +23,9 @@ const MOCK_AI_NETWORK_ERROR_TRIGGER = "__mock_network_error__";
 const MOCK_AI_FAILURE_TRIGGER = "__mock_ai_error__";
 const MOCK_AI_EMPTY_CONTENT_TRIGGER = "__mock_empty_content__";
 const MOCK_AI_UNAVAILABLE_TRIGGER = "__mock_ai_unavailable__";
+const OWNED_GENERATE_COPY_ENDPOINT = "/api/generate-copy";
+// This public flag only selects the owned API route. It is not a provider secret.
+const USE_REAL_AI = import.meta.env.VITE_USE_REAL_AI === "true";
 export const MOCK_EXPIRED_GIFT_TOKEN = "mock-heartlink-expired";
 const mockGiftStore = new Map<string, Gift>([
   [MOCK_GIFT_TOKEN, { ...MOCK_GIFT }],
@@ -38,6 +41,95 @@ function createAiGenerationError(code: AiGenerationError["code"], message: strin
     message,
     retryable: true,
   };
+}
+
+function getSafeAiErrorMessage(code: AiGenerationError["code"]) {
+  const messages: Record<AiGenerationError["code"], string> = {
+    "validation-empty": "Required copy generation input is empty.",
+    "ai-generation-failed": "AI generation failed.",
+    "ai-content-empty": "AI returned empty copy content.",
+    "ai-service-unavailable": "AI service is unavailable.",
+    "network-error": "Unable to reach the AI service.",
+  };
+
+  return messages[code];
+}
+
+function readAiErrorCode(payload: unknown): AiGenerationError["code"] | undefined {
+  if (typeof payload !== "object" || payload === null || !("error" in payload)) {
+    return undefined;
+  }
+
+  const error = payload.error;
+
+  if (typeof error !== "object" || error === null || !("code" in error)) {
+    return undefined;
+  }
+
+  const code = error.code;
+  const supportedCodes: AiGenerationError["code"][] = [
+    "validation-empty",
+    "ai-generation-failed",
+    "ai-content-empty",
+    "ai-service-unavailable",
+    "network-error",
+  ];
+
+  return typeof code === "string" && supportedCodes.includes(code as AiGenerationError["code"])
+    ? code as AiGenerationError["code"]
+    : undefined;
+}
+
+function isGenerateCopyResult(payload: unknown): payload is GenerateCopyResult {
+  if (typeof payload !== "object" || payload === null) return false;
+
+  const fields: (keyof GenerateCopyResult)[] = [
+    "coverText",
+    "title",
+    "body",
+    "quote",
+    "buttonText",
+    "signoff",
+    "acceptedText",
+  ];
+
+  return fields.every(field => {
+    const value = payload[field];
+    return typeof value === "string" && Boolean(value.trim());
+  });
+}
+
+async function generateCopyFromOwnedApi(input: GenerateCopyInput): Promise<GenerateCopyResult> {
+  let response: Response;
+
+  try {
+    response = await fetch(OWNED_GENERATE_COPY_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+  } catch {
+    throw createAiGenerationError("network-error", getSafeAiErrorMessage("network-error"));
+  }
+
+  let payload: unknown;
+
+  try {
+    payload = await response.json();
+  } catch {
+    throw createAiGenerationError("ai-generation-failed", getSafeAiErrorMessage("ai-generation-failed"));
+  }
+
+  if (!response.ok) {
+    const code = readAiErrorCode(payload) ?? "ai-generation-failed";
+    throw createAiGenerationError(code, getSafeAiErrorMessage(code));
+  }
+
+  if (!isGenerateCopyResult(payload)) {
+    throw createAiGenerationError("ai-content-empty", getSafeAiErrorMessage("ai-content-empty"));
+  }
+
+  return payload;
 }
 
 function readStoredMockGifts(): Record<string, Gift> {
@@ -92,9 +184,6 @@ function getStoredOrDefaultGift(token: string) {
 export async function generateCopy(input: GenerateCopyInput): Promise<GenerateCopyResult> {
   await delay(MOCK_GENERATE_COPY_DELAY_MS);
 
-  // Future AI integration point: replace the mock branch below with a call to
-  // our own server function. The browser must never call AI providers directly
-  // or contain provider keys.
   const hasMissingRequiredText = GENERATE_COPY_REQUIRED_TEXT_FIELDS.some(field => {
     const value = input[field];
     return typeof value === "string" && !value.trim();
@@ -135,6 +224,10 @@ export async function generateCopy(input: GenerateCopyInput): Promise<GenerateCo
       "ai-generation-failed",
       "Mock AI generation error.",
     );
+  }
+
+  if (USE_REAL_AI) {
+    return generateCopyFromOwnedApi(input);
   }
 
   return { ...MOCK_GENERATED_COPY };

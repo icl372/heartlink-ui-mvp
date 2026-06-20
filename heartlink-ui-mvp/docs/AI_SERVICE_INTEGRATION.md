@@ -4,11 +4,11 @@
 
 本文档记录 TODO-020 的 AI 服务端函数接入点。
 
-当前阶段仍然只使用本地 mock `generateCopy(input)`，不接真实 AI，不创建环境变量，不新增 API Key，不发起外部网络请求。
+TODO-032 后，`generateCopy(input)` 默认仍使用本地 mock；仅当浏览器构建时明确设置非敏感开关 `VITE_USE_REAL_AI=true`，才会调用同源 `/api/generate-copy`。浏览器不会直接请求任何 AI provider，也不读取 provider 密钥。
 
 ## 2. 当前前端入口
 
-当前创建端通过以下链路生成文案：
+默认创建端链路：
 
 ```text
 CreatorFlow.tsx -> generateCopy(input) -> mock copy result
@@ -27,9 +27,17 @@ src/app/types/ai.ts
 src/app/types/errors.ts
 ```
 
+启用真实路径时：
+
+```text
+CreatorFlow.tsx -> generateCopy(input) -> POST /api/generate-copy -> Vercel Function -> DeepSeek
+```
+
+`VITE_USE_REAL_AI` 仅控制是否调用自有同源接口，不能保存、传递或推导任何 provider key。未启用时继续使用 mock，现有 mock 错误触发器也始终优先于真实路径，供本地回归使用。
+
 ## 3. 后续替换目标
 
-后续真实 AI 接入时，替换位置应仅限 `giftService.generateCopy(input)` 内部实现。
+真实 AI 的调用切换仅限 `giftService.generateCopy(input)` 内部实现。
 
 目标链路为：
 
