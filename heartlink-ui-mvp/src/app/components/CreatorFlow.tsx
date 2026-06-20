@@ -524,7 +524,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
               </FormField>
 
               <FormField label="署名">
-                <input value={sender} onChange={e => setSender(e.target.value)} placeholder="例如：你的名字 / 女儿 / 老朋友"
+                <input value={sender} onChange={e => setSender(e.target.value)} placeholder="例如：你的名字 / 我 / 老朋友"
                   style={inputStyle} />
               </FormField>
 
@@ -538,7 +538,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
                 <FormField label="金额（仅用于文案展示）">
                   <div style={{ position: "relative" }}>
                     <span style={{ position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)", fontFamily: "'Noto Sans SC', sans-serif", color: "#9B8E86", fontSize: 14 }}>¥</span>
-                    <input value={amount} onChange={e => setAmount(e.target.value)} placeholder="例如：200" type="number"
+                    <input value={amount} onChange={e => setAmount(e.target.value)} placeholder="例如：心意金额" type="number"
                       style={{ ...inputStyle, paddingLeft: 32 }} />
                   </div>
                 </FormField>
