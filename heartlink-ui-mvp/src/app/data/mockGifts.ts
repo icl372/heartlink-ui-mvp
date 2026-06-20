@@ -22,7 +22,7 @@ export const MOCK_GIFT: Gift = {
   senderName: MOCK_GIFT_INPUT.senderName,
   occasion: MOCK_GIFT_INPUT.occasion,
   tone: MOCK_GIFT_INPUT.tone,
-  theme: "复古收据",
+  theme: "简约便签",
   originalMessage: MOCK_GIFT_INPUT.originalMessage,
   amountText: MOCK_GIFT_INPUT.amountText,
   copy: {

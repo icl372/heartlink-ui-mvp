@@ -8,16 +8,17 @@ export interface ThemeOption {
 }
 
 export const THEME_OPTIONS: ThemeOption[] = [
-  { id: "gentle-letter", label: "温柔信纸", desc: "柔和底纹 · 衬线字体 · 典雅排版", sub: "如一封手写的信" },
-  { id: "vintage-receipt", label: "复古收据", desc: "单据美学 · 克制留白 · 仪式感", sub: "RECEIPT STYLE" },
-  { id: "poetic-card", label: "诗意卡片", desc: "金边细节 · 诗句引用 · 卡片装帧", sub: "如一张明信片" },
-  { id: "minimal-note", label: "简约便签", desc: "极简留白 · 手写质感 · 纯粹表达", sub: "Less is more" },
+  { id: "minimal-note", label: "简约便签", desc: "干净、安静、恰到好处", sub: "A SIMPLE NOTE" },
+  { id: "gentle-letter", label: "温柔信纸", desc: "温柔、亲近、带一点暖意", sub: "A NOTE FOR YOU" },
+  { id: "poetic-card", label: "诗意卡片", desc: "诗意、轻柔、适合想念", sub: "A SMALL POEM" },
+  { id: "vintage-receipt", label: "复古收据", desc: "温暖、明亮、给人力量", sub: "A WARM NOTE" },
 ];
 
-export const DEFAULT_THEME: GiftTheme = "复古收据";
+export const DEFAULT_THEME: GiftTheme = "简约便签";
 
 export interface ThemeVisual {
   id: ThemeOption["id"];
+  displayName: string;
   coverBackground: string;
   surfaceBackground: string;
   borderColor: string;
@@ -25,63 +26,87 @@ export interface ThemeVisual {
   accentSoftColor: string;
   primaryColor: string;
   topRule: string;
+  iconBackground: string;
+  iconBorderRadius: number | string;
+  footerColor: string;
+  acceptedDecorColor: string;
   letterLabel: string;
   previewLabel: string;
   cardRadius: number;
 }
 
 export const THEME_VISUALS: Record<GiftTheme, ThemeVisual> = {
+  简约便签: {
+    id: "minimal-note",
+    displayName: "简约便签",
+    coverBackground: "#F7F8F5",
+    surfaceBackground: "#FFFFFF",
+    borderColor: "#DCE2DA",
+    accentColor: "#82957F",
+    accentSoftColor: "#EEF2EC",
+    primaryColor: "#465A4D",
+    topRule: "#82957F",
+    iconBackground: "#82957F",
+    iconBorderRadius: 14,
+    footerColor: "#82957F",
+    acceptedDecorColor: "#A9B8A5",
+    letterLabel: "A SIMPLE NOTE",
+    previewLabel: "NOTE PREVIEW",
+    cardRadius: 16,
+  },
   温柔信纸: {
     id: "gentle-letter",
-    coverBackground: "#FBF8F0",
-    surfaceBackground: "#FFFEFA",
-    borderColor: "#E6D9C8",
-    accentColor: "#B78978",
-    accentSoftColor: "#F1E6DC",
-    primaryColor: "#6A5147",
-    topRule: "linear-gradient(90deg,#D9B8A4,#F4E5D9,#D9B8A4)",
-    letterLabel: "A LETTER FOR YOU",
+    displayName: "柔粉信笺",
+    coverBackground: "#FCF6F4",
+    surfaceBackground: "#FFFEFC",
+    borderColor: "#E8D8D2",
+    accentColor: "#B8837A",
+    accentSoftColor: "#F7E9E4",
+    primaryColor: "#74534E",
+    topRule: "#B8837A",
+    iconBackground: "#D6A49A",
+    iconBorderRadius: "50%",
+    footerColor: "#B8837A",
+    acceptedDecorColor: "#E1BDB4",
+    letterLabel: "A NOTE FOR YOU",
     previewLabel: "LETTER PREVIEW",
-    cardRadius: 20,
-  },
-  复古收据: {
-    id: "vintage-receipt",
-    coverBackground: "#FAF7F0",
-    surfaceBackground: "#FFFFFF",
-    borderColor: "#EAE2D8",
-    accentColor: "#C9A66B",
-    accentSoftColor: "#FAF7F0",
-    primaryColor: "#473B35",
-    topRule: "linear-gradient(90deg,#C9A66B,#E8C98A,#C9A66B)",
-    letterLabel: "ACKNOWLEDGMENT RECEIPT",
-    previewLabel: "RECEIPT PREVIEW",
-    cardRadius: 28,
+    cardRadius: 16,
   },
   诗意卡片: {
     id: "poetic-card",
-    coverBackground: "#FCF5EE",
-    surfaceBackground: "#FFFDF9",
-    borderColor: "#E9D2C7",
-    accentColor: "#A96E73",
-    accentSoftColor: "#F7E9E3",
-    primaryColor: "#754D52",
-    topRule: "linear-gradient(90deg,#D8A0A1,#F2D8C8,#D8A0A1)",
+    displayName: "雾紫诗笺",
+    coverBackground: "#F7F5FA",
+    surfaceBackground: "#FFFEFF",
+    borderColor: "#DED8EA",
+    accentColor: "#8A789E",
+    accentSoftColor: "#F0EDF6",
+    primaryColor: "#5C506C",
+    topRule: "#8A789E",
+    iconBackground: "#A99ABE",
+    iconBorderRadius: 20,
+    footerColor: "#8A789E",
+    acceptedDecorColor: "#C4B9D3",
     letterLabel: "A SMALL POEM",
     previewLabel: "POEM PREVIEW",
-    cardRadius: 30,
+    cardRadius: 16,
   },
-  简约便签: {
-    id: "minimal-note",
-    coverBackground: "#FAFBF8",
-    surfaceBackground: "#FFFFFF",
-    borderColor: "#E1E4DF",
-    accentColor: "#7E8A80",
-    accentSoftColor: "#F0F3EE",
-    primaryColor: "#485149",
-    topRule: "#CDD5CC",
-    letterLabel: "A SIMPLE NOTE",
-    previewLabel: "NOTE PREVIEW",
-    cardRadius: 12,
+  复古收据: {
+    id: "vintage-receipt",
+    displayName: "日光便签",
+    coverBackground: "#FCF7EF",
+    surfaceBackground: "#FFFEFB",
+    borderColor: "#E9DCC8",
+    accentColor: "#B68755",
+    accentSoftColor: "#F8EEDB",
+    primaryColor: "#73553D",
+    topRule: "#B68755",
+    iconBackground: "#D2A873",
+    iconBorderRadius: "50%",
+    footerColor: "#B68755",
+    acceptedDecorColor: "#E2C69E",
+    letterLabel: "A WARM NOTE",
+    previewLabel: "WARM NOTE PREVIEW",
+    cardRadius: 16,
   },
 };
 

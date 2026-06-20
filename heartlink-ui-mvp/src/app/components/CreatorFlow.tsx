@@ -137,58 +137,15 @@ function getPreviousCreatorStep(currentStep: CreatorStep): CreatorStep {
 }
 
 function StyleThumbnail({ style, selected }: { style: Style; selected: boolean }) {
-  const borderColor = selected ? "#473B35" : "#EAE2D8";
-
-  if (style === "温柔信纸") {
-    return (
-      <div style={{ width: 60, height: 76, borderRadius: 10, background: "#FBF8F0", border: `1.5px solid ${borderColor}`, overflow: "hidden", flexShrink: 0 }}>
-        <div style={{ height: 3, background: "#C9A66B", opacity: 0.35 }} />
-        <div style={{ padding: "6px 8px", display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-          <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#C9A66B", opacity: 0.35 }} />
-          <div style={{ width: 36, height: 1.5, borderRadius: 99, background: "#9B8E86", opacity: 0.2 }} />
-          {[28, 22, 30, 18, 24].map((w, i) => (
-            <div key={i} style={{ width: w, height: 1, borderRadius: 99, background: "#9B8E86", opacity: 0.18 }} />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (style === "复古收据") {
-    return (
-      <div style={{ width: 60, height: 76, borderRadius: 10, background: "#FFFFFF", border: `1.5px solid ${borderColor}`, overflow: "hidden", flexShrink: 0 }}>
-        <div style={{ padding: "6px 8px", display: "flex", flexDirection: "column", gap: 2 }}>
-          <div style={{ width: 32, height: 5, borderRadius: 2, background: "#3F342F", opacity: 0.5 }} />
-          <div style={{ width: "100%", height: 1, background: "#EAE2D8", marginBottom: 2 }} />
-          {[26, 20, 24, 18, 22, 16].map((w, i) => (
-            <div key={i} style={{ width: w, height: 1, borderRadius: 99, background: "#9B8E86", opacity: 0.2 }} />
-          ))}
-          <div style={{ width: "100%", height: 1, borderTop: "1px dashed #EAE2D8", marginTop: 2 }} />
-        </div>
-      </div>
-    );
-  }
-
-  if (style === "诗意卡片") {
-    return (
-      <div style={{ width: 60, height: 76, borderRadius: 10, background: "linear-gradient(160deg,#F9F1E4 0%,#EDD9B8 100%)", border: `1.5px solid ${selected ? "#473B35" : "#C9A66B"}`, overflow: "hidden", flexShrink: 0 }}>
-        <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, padding: "0 8px" }}>
-          <span style={{ color: "#C9A66B", fontSize: 14, opacity: 0.7, lineHeight: 1 }}>"</span>
-          {[24, 28, 20].map((w, i) => (
-            <div key={i} style={{ width: w, height: 1.5, borderRadius: 99, background: "#9B8E86", opacity: 0.3 }} />
-          ))}
-          <span style={{ color: "#C9A66B", fontSize: 14, opacity: 0.7, lineHeight: 1 }}>"</span>
-        </div>
-      </div>
-    );
-  }
-
+  const theme = getThemeVisual(style);
   return (
-    <div style={{ width: 60, height: 76, borderRadius: 10, background: "#FFFFFF", border: `1.5px solid ${borderColor}`, overflow: "hidden", flexShrink: 0 }}>
-      <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 4 }}>
-        <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#C9A66B", opacity: 0.5 }} />
-        {[22, 32, 18, 28].map((w, i) => (
-          <div key={i} style={{ width: w, height: 1.5, borderRadius: 99, background: "#9B8E86", opacity: 0.13 }} />
+    <div style={{ width: 60, height: 76, borderRadius: 10, background: theme.surfaceBackground, border: `1.5px solid ${selected ? theme.primaryColor : theme.borderColor}`, overflow: "hidden", flexShrink: 0 }}>
+      <div style={{ height: 3, background: theme.topRule }} />
+      <div style={{ padding: "8px 9px", display: "flex", flexDirection: "column", gap: 4 }}>
+        <div style={{ width: 11, height: 11, borderRadius: theme.iconBorderRadius, background: theme.iconBackground, opacity: 0.8 }} />
+        <div style={{ width: 34, height: 1.5, borderRadius: 99, background: theme.accentColor, opacity: 0.35 }} />
+        {[28, 22, 31, 18].map((width, index) => (
+          <div key={index} style={{ width, height: 1.5, borderRadius: 99, background: theme.accentColor, opacity: 0.18 }} />
         ))}
       </div>
     </div>
@@ -779,16 +736,17 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {CENTRAL_STYLE_OPTIONS.map(opt => {
                   const active = selectedStyle === opt.label;
+                  const theme = getThemeVisual(opt.label);
                   return (
                     <button key={opt.label} onClick={() => setSelectedStyle(opt.label)}
-                      style={{ borderRadius: 18, padding: "16px 18px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.15s", background: active ? "#473B35" : "#FFFFFF", border: `1.5px solid ${active ? "#473B35" : "#EAE2D8"}`, boxShadow: active ? "0 4px 16px rgba(71,59,53,0.2)" : "none" }}>
+                      style={{ borderRadius: 16, padding: "16px 18px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.15s", background: active ? theme.primaryColor : theme.surfaceBackground, border: `1.5px solid ${active ? theme.primaryColor : theme.borderColor}`, boxShadow: active ? `0 4px 16px ${theme.accentSoftColor}` : "none" }}>
                       <StyleThumbnail style={opt.label} selected={active} />
                       <div style={{ flex: 1, textAlign: "left" }}>
-                        <div style={{ fontFamily: "'Noto Serif SC', serif", fontSize: 16, color: active ? "#FFFFFF" : "#3F342F", letterSpacing: 2, marginBottom: 4 }}>{opt.label}</div>
+                        <div style={{ fontFamily: "'Noto Serif SC', serif", fontSize: 16, color: active ? "#FFFFFF" : "#3F342F", letterSpacing: 2, marginBottom: 4 }}>{theme.displayName}</div>
                         <div style={{ fontFamily: "'Noto Sans SC', sans-serif", fontSize: 11, color: active ? "rgba(255,255,255,0.55)" : "#9B8E86", letterSpacing: 0.3, marginBottom: 3 }}>{opt.desc}</div>
-                        <div style={{ fontFamily: "'Lora', serif", fontSize: 10, color: active ? "rgba(201,166,107,0.8)" : "#C9A66B", fontStyle: "italic", letterSpacing: 1 }}>{opt.sub}</div>
+                        <div style={{ fontFamily: "'Lora', serif", fontSize: 10, color: active ? theme.accentSoftColor : theme.accentColor, fontStyle: "italic", letterSpacing: 1 }}>{opt.sub}</div>
                       </div>
-                      {active && <Check size={16} color="#E8C98A" style={{ flexShrink: 0 }} />}
+                      {active && <Check size={16} color={theme.accentSoftColor} style={{ flexShrink: 0 }} />}
                     </button>
                   );
                 })}
@@ -818,7 +776,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
               <div style={{ borderRadius: previewTheme.cardRadius, overflow: "hidden", border: `1px solid ${previewTheme.borderColor}`, boxShadow: "0 8px 40px rgba(63,52,47,0.1)" }}>
                 {/* Cover preview section */}
                 <div style={{ background: previewTheme.coverBackground, padding: "32px 24px", display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
-                  <div style={{ width: 48, height: 48, borderRadius: previewTheme.id === "minimal-note" ? 12 : "50%", background: previewTheme.topRule, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 0 0 6px ${previewTheme.accentSoftColor}` }}>
+                  <div style={{ width: 48, height: 48, borderRadius: previewTheme.iconBorderRadius, background: previewTheme.iconBackground, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 0 0 6px ${previewTheme.accentSoftColor}` }}>
                     <Heart size={18} color="#FFFFFF" fill="#FFFFFF" />
                   </div>
                   <div style={{ textAlign: "center" }}>
@@ -855,7 +813,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
               </div>
 
               <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
-                <span style={{ fontFamily: "'Noto Sans SC', sans-serif", color: "#9B8E86", fontSize: 12, letterSpacing: 0.5 }}>风格：{selectedStyle}</span>
+                <span style={{ fontFamily: "'Noto Sans SC', sans-serif", color: "#9B8E86", fontSize: 12, letterSpacing: 0.5 }}>风格：{previewTheme.displayName}</span>
                 <div style={{ width: 3, height: 3, borderRadius: "50%", background: "#EAE2D8" }} />
                 <span style={{ fontFamily: "'Noto Sans SC', sans-serif", color: "#9B8E86", fontSize: 12, letterSpacing: 0.5 }}>场景：{scene}</span>
               </div>

@@ -67,28 +67,12 @@ function SceneIcon({ scene, size = 28, color = "#FFFFFF" }: { scene: Scene; size
   return <Gift {...props} />;
 }
 
-// ─── Floating particles (received state) ─────────────────────────────────────
-function FloatingHearts() {
-  const items = Array.from({ length: 14 }, (_, i) => ({
-    id: i,
-    x: 5 + Math.random() * 90,
-    y: 5 + Math.random() * 90,
-    size: 8 + Math.random() * 10,
-    delay: Math.random() * 2.5,
-    duration: 2.5 + Math.random() * 2,
-    drift: (Math.random() - 0.5) * 24,
-  }));
-
+// ─── Received-state decoration ───────────────────────────────────────────────
+function ReceivedDecor({ color }: { color: string }) {
   return (
     <div style={{ position: "fixed", inset: 0, pointerEvents: "none", overflow: "hidden", zIndex: 0 }}>
-      {items.map(p => (
-        <motion.div key={p.id}
-          style={{ position: "absolute", left: `${p.x}%`, top: `${p.y}%` }}
-          animate={{ y: [0, -18, 0], x: [0, p.drift, 0], opacity: [0.25, 0.5, 0.25] }}
-          transition={{ duration: p.duration, repeat: Infinity, delay: p.delay, ease: "easeInOut" }}>
-          <Heart size={p.size} color="#C9A66B" fill="#C9A66B" />
-        </motion.div>
-      ))}
+      <Heart size={11} color={color} fill={color} style={{ position: "absolute", left: "12%", top: "18%", opacity: 0.32 }} />
+      <Heart size={8} color={color} fill={color} style={{ position: "absolute", right: "14%", top: "72%", opacity: 0.24 }} />
     </div>
   );
 }
@@ -188,8 +172,8 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
   return (
     <div style={{ minHeight: "100vh", width: "100%", display: "flex", justifyContent: "center", background: themeVisual.coverBackground, position: "relative" }}>
 
-      {/* Floating particles for received state */}
-      {state === RECEIVER_STATES.received && <FloatingHearts />}
+      {/* Keep received-state decoration intentionally light. */}
+      {state === RECEIVER_STATES.received && <ReceivedDecor color={themeVisual.acceptedDecorColor} />}
 
       {/* ── Content ── */}
       <div style={{ width: "100%", maxWidth: 390, position: "relative", zIndex: 1 }}>
@@ -230,15 +214,14 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
 
                 {/* Seal */}
                 <div style={{ position: "relative", marginBottom: 32 }}>
-                  {/* Outer dashed ring */}
+                  {/* A light, theme-aware ring keeps the cover gift-like without ticket cues. */}
                   <svg width="110" height="110" viewBox="0 0 110 110" style={{ position: "absolute", top: -11, left: -11 }}>
-                    <circle cx="55" cy="55" r="50" fill="none" stroke="#C9A66B" strokeWidth="1"
-                      strokeDasharray="5 4" opacity="0.4" />
+                    <circle cx="55" cy="55" r="50" fill="none" stroke={themeVisual.accentColor} strokeWidth="1" opacity="0.28" />
                   </svg>
                   <motion.div
                     animate={{ scale: [1, 1.03, 1] }}
                     transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
-                    style={{ width: 88, height: 88, borderRadius: themeVisual.id === "minimal-note" ? 16 : "50%", background: themeVisual.topRule, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 8px 32px ${themeVisual.accentSoftColor}` }}>
+                    style={{ width: 88, height: 88, borderRadius: themeVisual.iconBorderRadius, background: themeVisual.iconBackground, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 8px 32px ${themeVisual.accentSoftColor}` }}>
                     <SceneIcon scene={scene} size={30} color="#FFFFFF" />
                   </motion.div>
                 </div>
@@ -273,11 +256,11 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
 
                 {/* Footer tag */}
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 20 }}>
-                  <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#C9A66B", opacity: 0.5 }} />
-                  <span style={{ fontFamily: "'Noto Sans SC', sans-serif", color: "#C9A66B", fontSize: 11, letterSpacing: 2 }}>
+                  <div style={{ width: 4, height: 4, borderRadius: "50%", background: themeVisual.footerColor, opacity: 0.5 }} />
+                  <span style={{ fontFamily: "'Noto Sans SC', sans-serif", color: themeVisual.footerColor, fontSize: 11, letterSpacing: 2 }}>
                     心意链接 · HeartLink
                   </span>
-                  <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#C9A66B", opacity: 0.5 }} />
+                  <div style={{ width: 4, height: 4, borderRadius: "50%", background: themeVisual.footerColor, opacity: 0.5 }} />
                 </div>
               </div>
             </motion.div>
@@ -397,12 +380,12 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
                   <div style={{ height: 1, background: themeVisual.borderColor }} />
                 </div>
 
-                {/* Gold received button */}
+                {/* Theme-aware received button */}
                 <div style={{ padding: "20px 28px 28px" }}>
                   <motion.button
                     initial={{ scale: 0.95 }} animate={{ scale: 1 }}
                     transition={{ type: "spring", stiffness: 200, damping: 16 }}
-                    style={{ width: "100%", padding: "16px 0", borderRadius: 99, background: themeVisual.topRule, color: "#FFFFFF", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 15, letterSpacing: 2, border: "none", cursor: "default", boxShadow: "0 6px 28px rgba(201,166,107,0.4)" }}>
+                    style={{ width: "100%", padding: "16px 0", borderRadius: 99, background: themeVisual.primaryColor, color: "#FFFFFF", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 15, letterSpacing: 2, border: "none", cursor: "default", boxShadow: `0 6px 28px ${themeVisual.accentSoftColor}` }}>
                     {receivedPrimaryText}
                   </motion.button>
 
@@ -412,11 +395,11 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
                     transition={{ delay: 0.4 }}
                     style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, marginTop: 16 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <Heart size={10} color="#C9A66B" fill="#C9A66B" />
-                      <span style={{ fontFamily: "'Noto Sans SC', sans-serif", color: "#C9A66B", fontSize: 12, letterSpacing: 1 }}>
+                      <Heart size={10} color={themeVisual.acceptedDecorColor} fill={themeVisual.acceptedDecorColor} />
+                      <span style={{ fontFamily: "'Noto Sans SC', sans-serif", color: themeVisual.footerColor, fontSize: 12, letterSpacing: 1 }}>
                         {acceptedDateLabel ? `已于 ${acceptedDateLabel} 接收` : "这份心意已被好好收藏"}
                       </span>
-                      <Heart size={10} color="#C9A66B" fill="#C9A66B" />
+                      <Heart size={10} color={themeVisual.acceptedDecorColor} fill={themeVisual.acceptedDecorColor} />
                     </div>
                     <p style={{ fontFamily: "'Noto Serif SC', serif", color: "#C5BAB2", fontSize: 12, letterSpacing: 0.5, margin: 0 }}>
                       {receivedDetailText}
