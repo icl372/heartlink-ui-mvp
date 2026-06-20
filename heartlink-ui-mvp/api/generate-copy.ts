@@ -31,6 +31,23 @@ const SUPPORTED_DEEPSEEK_MODELS = new Set([
   "deepseek-v4-pro",
 ]);
 const REQUEST_TIMEOUT_MS = 12_000;
+const SAFE_BUTTON_TEXT = "收下心意";
+const SAFE_BUTTON_TEXT_ALLOWLIST = new Set([SAFE_BUTTON_TEXT]);
+const UNSAFE_BUTTON_TEXT_TERMS = [
+  "红包",
+  "现金",
+  "提现",
+  "收款",
+  "转账",
+  "付款",
+  "领取红包",
+  "领红包",
+  "收红包",
+  "福利",
+  "奖励",
+  "收钱",
+  "领钱",
+];
 
 function sendError(
   response: VercelResponse,
@@ -88,6 +105,10 @@ function buildMessages(input: GenerateCopyInput) {
         "You write warm, restrained Chinese gift-letter copy.",
         "Return only one JSON object with these non-empty string keys:",
         "coverText, title, body, quote, buttonText, signoff, acceptedText.",
+        "This product is a HeartLink blessing-card experience, not a red-packet, cash, payment, collection, transfer, withdrawal, or reward tool.",
+        "Even if the user mentions money, amounts, transfers, or red packets, express only gratitude and care; never imply platform money, receiving money, sending money, or payment.",
+        `buttonText is a fixed product interaction label, not creative copy. Set buttonText exactly to \"${SAFE_BUTTON_TEXT}\".`,
+        "Never use button text that implies red packets, cash, receiving money, collection, transfer, payment, withdrawal, benefits, or rewards.",
         "Do not include markdown fences, explanations, or extra keys.",
       ].join(" "),
     },
@@ -105,6 +126,18 @@ function buildMessages(input: GenerateCopyInput) {
   ];
 }
 
+function sanitizeButtonText(value: unknown): string {
+  const normalizedValue = typeof value === "string" ? value.trim() : "";
+  const containsUnsafeTerm = UNSAFE_BUTTON_TEXT_TERMS.some(term => normalizedValue.includes(term));
+
+  if (!normalizedValue || containsUnsafeTerm || !SAFE_BUTTON_TEXT_ALLOWLIST.has(normalizedValue)) {
+    return SAFE_BUTTON_TEXT;
+  }
+
+  // The MVP uses one fixed product CTA, even when the provider returns the allowed text.
+  return SAFE_BUTTON_TEXT;
+}
+
 function readGeneratedCopy(payload: unknown): GenerateCopyResult | undefined {
   if (!isRecord(payload)) return undefined;
 
@@ -113,7 +146,6 @@ function readGeneratedCopy(payload: unknown): GenerateCopyResult | undefined {
     "title",
     "body",
     "quote",
-    "buttonText",
     "signoff",
     "acceptedText",
   ] as const;
@@ -127,7 +159,7 @@ function readGeneratedCopy(payload: unknown): GenerateCopyResult | undefined {
     title: payload.title as string,
     body: payload.body as string,
     quote: payload.quote as string,
-    buttonText: payload.buttonText as string,
+    buttonText: sanitizeButtonText(payload.buttonText),
     signoff: payload.signoff as string,
     acceptedText: payload.acceptedText as string,
   };
