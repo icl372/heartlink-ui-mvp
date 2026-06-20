@@ -11,9 +11,11 @@ export {
 
 export {
   DEFAULT_THEME,
+  getThemeVisual,
   THEME_OPTIONS,
+  THEME_VISUALS,
 } from "./themes";
-export type { ThemeOption } from "./themes";
+export type { ThemeOption, ThemeVisual } from "./themes";
 
 export {
   DEFAULT_CREATE_GIFT_INPUT,

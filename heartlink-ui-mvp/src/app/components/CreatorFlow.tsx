@@ -8,6 +8,7 @@ import {
 import {
   DEFAULT_CREATE_GIFT_INPUT,
   DEFAULT_THEME,
+  getThemeVisual,
   MOCK_GENERATED_COPY,
   OCCASION_OPTIONS,
   THEME_OPTIONS,
@@ -250,6 +251,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
 
   const fallbackLink = createGiftUrl(MOCK_PREVIEW_TOKEN);
   const successLink = generatedLink || fallbackLink;
+  const previewTheme = getThemeVisual(selectedStyle);
 
   // Go back, clamped to 0
   const goBack = () => {
@@ -813,40 +815,40 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
               </div>
 
               {/* Framed preview */}
-              <div style={{ borderRadius: 24, overflow: "hidden", border: "1px solid #EAE2D8", boxShadow: "0 8px 40px rgba(63,52,47,0.1)" }}>
+              <div style={{ borderRadius: previewTheme.cardRadius, overflow: "hidden", border: `1px solid ${previewTheme.borderColor}`, boxShadow: "0 8px 40px rgba(63,52,47,0.1)" }}>
                 {/* Cover preview section */}
-                <div style={{ background: "#FAF7F0", padding: "32px 24px", display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
-                  <div style={{ width: 48, height: 48, borderRadius: "50%", background: "linear-gradient(135deg,#C9A66B,#E8C98A)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 0 6px rgba(201,166,107,0.12)" }}>
+                <div style={{ background: previewTheme.coverBackground, padding: "32px 24px", display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+                  <div style={{ width: 48, height: 48, borderRadius: previewTheme.id === "minimal-note" ? 12 : "50%", background: previewTheme.topRule, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 0 0 6px ${previewTheme.accentSoftColor}` }}>
                     <Heart size={18} color="#FFFFFF" fill="#FFFFFF" />
                   </div>
                   <div style={{ textAlign: "center" }}>
                     <p style={{ fontFamily: "'Noto Serif SC', serif", color: "#3F342F", fontSize: 16, letterSpacing: 3, margin: "0 0 6px" }}>致：{recipient}</p>
                     <p style={{ fontFamily: "'Noto Sans SC', sans-serif", color: "#9B8E86", fontSize: 11, lineHeight: 1.9, letterSpacing: 0.5, margin: 0 }}>在这琐碎而温热的日常里<br />有一份心意请您亲启</p>
                   </div>
-                  <div style={{ padding: "6px 18px", borderRadius: 99, border: "1px solid #C9A66B" }}>
-                    <span style={{ fontFamily: "'Noto Sans SC', sans-serif", color: "#C9A66B", fontSize: 11, letterSpacing: 2 }}>点击开启信笺</span>
+                  <div style={{ padding: "6px 18px", borderRadius: 99, border: `1px solid ${previewTheme.accentColor}` }}>
+                    <span style={{ fontFamily: "'Noto Sans SC', sans-serif", color: previewTheme.accentColor, fontSize: 11, letterSpacing: 2 }}>点击开启信笺</span>
                   </div>
                 </div>
 
                 {/* Divider */}
-                <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 20px", background: "#FFFFFF" }}>
-                  <div style={{ flex: 1, height: 1, background: "#EAE2D8" }} />
-                  <span style={{ fontFamily: "'Lora', serif", color: "#C9A66B", fontSize: 9, letterSpacing: 2 }}>LETTER PREVIEW</span>
-                  <div style={{ flex: 1, height: 1, background: "#EAE2D8" }} />
+                <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 20px", background: previewTheme.surfaceBackground }}>
+                  <div style={{ flex: 1, height: 1, background: previewTheme.borderColor }} />
+                  <span style={{ fontFamily: "'Lora', serif", color: previewTheme.accentColor, fontSize: 9, letterSpacing: 2 }}>{previewTheme.previewLabel}</span>
+                  <div style={{ flex: 1, height: 1, background: previewTheme.borderColor }} />
                 </div>
 
                 {/* Letter preview */}
-                <div style={{ background: "#FFFFFF", padding: "16px 20px 20px" }}>
-                  <p style={{ fontFamily: "'Lora', serif", color: "#C9A66B", fontSize: 9, letterSpacing: 3, textTransform: "uppercase", margin: "0 0 6px" }}>Acknowledgment Receipt</p>
+                <div style={{ background: previewTheme.surfaceBackground, padding: "16px 20px 20px" }}>
+                  <p style={{ fontFamily: "'Lora', serif", color: previewTheme.accentColor, fontSize: 9, letterSpacing: 3, textTransform: "uppercase", margin: "0 0 6px" }}>{previewTheme.letterLabel}</p>
                   <p style={{ fontFamily: "'Noto Serif SC', serif", color: "#3F342F", fontSize: 17, letterSpacing: 3, margin: "0 0 10px" }}>{editTitle}</p>
-                  <div style={{ height: 1, background: "#EAE2D8", margin: "0 0 10px" }} />
+                  <div style={{ height: 1, background: previewTheme.borderColor, margin: "0 0 10px" }} />
                   <p style={{ fontFamily: "'Noto Serif SC', serif", color: "#3F342F", fontSize: 12, lineHeight: 1.9, textIndent: "2em", letterSpacing: 0.3, margin: "0 0 10px" }}>
                     {editBody.split("\n\n")[0].slice(0, 60)}…
                   </p>
-                  <div style={{ padding: "8px 10px", borderLeft: "2.5px solid #C9A66B", background: "#FAF7F0", borderRadius: "0 8px 8px 0", margin: "0 0 12px" }}>
+                  <div style={{ padding: "8px 10px", borderLeft: `2.5px solid ${previewTheme.accentColor}`, background: previewTheme.accentSoftColor, borderRadius: "0 8px 8px 0", margin: "0 0 12px" }}>
                     <p style={{ fontFamily: "'Lora', serif", color: "#9B8E86", fontSize: 11, fontStyle: "italic", margin: 0 }}>"{editQuote.slice(0, 30)}…"</p>
                   </div>
-                  <div style={{ width: "100%", padding: "11px 0", borderRadius: 99, background: "#473B35", textAlign: "center" }}>
+                  <div style={{ width: "100%", padding: "11px 0", borderRadius: 99, background: previewTheme.primaryColor, textAlign: "center" }}>
                     <span style={{ fontFamily: "'Noto Sans SC', sans-serif", color: "#FFFFFF", fontSize: 12, letterSpacing: 2 }}>{editButtonText}</span>
                   </div>
                 </div>

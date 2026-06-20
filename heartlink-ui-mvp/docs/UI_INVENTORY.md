@@ -164,6 +164,17 @@
 1. `STYLE_OPTIONS` 写在 `CreatorFlow.tsx` 内。
 2. 预览缩略图由局部组件 `StyleThumbnail` 实现。
 
+### Theme Mapping
+
+当前 MVP 支持四个持久化 display name 与稳定 theme id：
+
+1. `温柔信纸` / `gentle-letter`
+2. `复古收据` / `vintage-receipt`
+3. `诗意卡片` / `poetic-card`
+4. `简约便签` / `minimal-note`
+
+`Gift.theme` 继续保存既有中文 display name，以兼容当前 mock 和已创建数据；theme id 仅用于集中视觉配置。主题会影响创建端预览、接收端封面态、正文态和接收完成态的色板、圆角、顶部标签、引用块和主按钮。默认 mock gift 保持 `复古收据`。
+
 ### Step 6：预览
 
 真实内容：

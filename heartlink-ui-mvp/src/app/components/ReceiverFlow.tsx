@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Heart, Star, Zap, Gift, MessageCircle } from "lucide-react";
 import {
+  getThemeVisual,
   MOCK_GIFT_TOKEN,
 } from "../data";
 import { acceptGift, getGiftByToken } from "../services";
@@ -109,6 +110,7 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
   const [gift, setGift] = useState<GiftData | null>(null);
   const [isOpening, setIsOpening] = useState(false);
   const receiverToken = token ?? MOCK_GIFT_TOKEN;
+  const themeVisual = getThemeVisual(gift?.theme);
 
   const scene = (gift?.occasion ?? "感谢") as Scene;
   const bodyParagraphs = gift?.copy.body.split("\n\n") ?? ["", ""];
@@ -184,7 +186,7 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
   };
 
   return (
-    <div style={{ minHeight: "100vh", width: "100%", display: "flex", justifyContent: "center", background: "#FAF7F0", position: "relative" }}>
+    <div style={{ minHeight: "100vh", width: "100%", display: "flex", justifyContent: "center", background: themeVisual.coverBackground, position: "relative" }}>
 
       {/* Floating particles for received state */}
       {state === RECEIVER_STATES.received && <FloatingHearts />}
@@ -224,7 +226,7 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
               transition={{ duration: 0.5 }}
               style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100vh", padding: "60px 28px 60px" }}>
 
-              <div style={{ width: "100%", borderRadius: 28, background: "#FFFFFF", boxShadow: "0 12px 60px rgba(63,52,47,0.1)", display: "flex", flexDirection: "column", alignItems: "center", padding: "52px 32px 44px", gap: 0 }}>
+              <div style={{ width: "100%", borderRadius: themeVisual.cardRadius, background: themeVisual.surfaceBackground, border: `1px solid ${themeVisual.borderColor}`, boxShadow: "0 12px 60px rgba(63,52,47,0.1)", display: "flex", flexDirection: "column", alignItems: "center", padding: "52px 32px 44px", gap: 0 }}>
 
                 {/* Seal */}
                 <div style={{ position: "relative", marginBottom: 32 }}>
@@ -236,7 +238,7 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
                   <motion.div
                     animate={{ scale: [1, 1.03, 1] }}
                     transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
-                    style={{ width: 88, height: 88, borderRadius: "50%", background: "linear-gradient(140deg,#C9A66B 0%,#DFB87A 60%,#C9A66B 100%)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 8px 32px rgba(201,166,107,0.35)" }}>
+                    style={{ width: 88, height: 88, borderRadius: themeVisual.id === "minimal-note" ? 16 : "50%", background: themeVisual.topRule, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 8px 32px ${themeVisual.accentSoftColor}` }}>
                     <SceneIcon scene={scene} size={30} color="#FFFFFF" />
                   </motion.div>
                 </div>
@@ -251,9 +253,9 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
 
                 {/* Ornament */}
                 <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "14px 0 14px" }}>
-                  <div style={{ width: 20, height: 1, background: "#C9A66B", opacity: 0.4 }} />
-                  <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#C9A66B", opacity: 0.4 }} />
-                  <div style={{ width: 20, height: 1, background: "#C9A66B", opacity: 0.4 }} />
+                  <div style={{ width: 20, height: 1, background: themeVisual.accentColor, opacity: 0.4 }} />
+                  <div style={{ width: 5, height: 5, borderRadius: "50%", background: themeVisual.accentColor, opacity: 0.4 }} />
+                  <div style={{ width: 20, height: 1, background: themeVisual.accentColor, opacity: 0.4 }} />
                 </div>
 
                 <p style={{ fontFamily: "'Noto Serif SC', serif", color: "#9B8E86", fontSize: 14, lineHeight: 2, textAlign: "center", letterSpacing: 1, margin: "0 0 40px", whiteSpace: "pre-line" }}>
@@ -265,7 +267,7 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
                   onClick={handleOpen}
                   disabled={isOpening}
                   whileTap={{ scale: 0.97 }}
-                  style={{ width: "100%", padding: "16px 0", borderRadius: 99, background: isOpening ? "#C9A66B" : "#473B35", color: "#FFFFFF", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 15, letterSpacing: 4, border: "none", cursor: "pointer", boxShadow: "0 6px 24px rgba(71,59,53,0.25)", transition: "background 0.3s" }}>
+                  style={{ width: "100%", padding: "16px 0", borderRadius: 99, background: isOpening ? themeVisual.accentColor : themeVisual.primaryColor, color: "#FFFFFF", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 15, letterSpacing: 4, border: "none", cursor: "pointer", boxShadow: "0 6px 24px rgba(71,59,53,0.25)", transition: "background 0.3s" }}>
                   {isOpening ? "正在开启…" : "点击开启信笺"}
                 </motion.button>
 
@@ -288,20 +290,20 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
               transition={{ duration: 0.5, ease: "easeOut" }}
               style={{ padding: "72px 24px 48px", display: "flex", flexDirection: "column", gap: 0 }}>
 
-              <div style={{ borderRadius: 28, background: "#FFFFFF", boxShadow: "0 12px 60px rgba(63,52,47,0.09)", overflow: "hidden" }}>
+              <div style={{ borderRadius: themeVisual.cardRadius, background: themeVisual.surfaceBackground, border: `1px solid ${themeVisual.borderColor}`, boxShadow: "0 12px 60px rgba(63,52,47,0.09)", overflow: "hidden" }}>
 
                 {/* Letter top border */}
-                <div style={{ height: 3, background: "linear-gradient(90deg,#C9A66B,#E8C98A,#C9A66B)" }} />
+                <div style={{ height: 3, background: themeVisual.topRule }} />
 
                 {/* Header */}
                 <div style={{ padding: "28px 28px 0" }}>
-                  <p style={{ fontFamily: "'Lora', serif", color: "#C9A66B", fontSize: 10, letterSpacing: 4, textTransform: "uppercase", margin: "0 0 10px" }}>
-                    Acknowledgment Receipt
+                  <p style={{ fontFamily: "'Lora', serif", color: themeVisual.accentColor, fontSize: 10, letterSpacing: 4, textTransform: "uppercase", margin: "0 0 10px" }}>
+                    {themeVisual.letterLabel}
                   </p>
                   <h1 style={{ fontFamily: "'Noto Serif SC', serif", color: "#3F342F", fontSize: 26, letterSpacing: 4, margin: "0 0 20px", lineHeight: 1.35 }}>
                     {centralLetterTitle}
                   </h1>
-                  <div style={{ height: 1, background: "#EAE2D8" }} />
+                  <div style={{ height: 1, background: themeVisual.borderColor }} />
                 </div>
 
                 {/* Body */}
@@ -311,7 +313,7 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
                   </p>
 
                   {/* Quote block */}
-                  <div style={{ borderLeft: "3px solid #C9A66B", background: "#FAF7F0", borderRadius: "0 12px 12px 0", padding: "14px 18px" }}>
+                  <div style={{ borderLeft: `3px solid ${themeVisual.accentColor}`, background: themeVisual.accentSoftColor, borderRadius: "0 12px 12px 0", padding: "14px 18px" }}>
                     <p style={{ fontFamily: "'Lora', serif", color: "#9B8E86", fontSize: 14, lineHeight: 1.9, fontStyle: "italic", margin: 0, letterSpacing: 0.3 }}>
                       "{centralLetterQuote}"
                     </p>
@@ -333,7 +335,7 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
                     </div>
                   </div>
 
-                  <div style={{ height: 1, background: "#EAE2D8" }} />
+                  <div style={{ height: 1, background: themeVisual.borderColor }} />
                 </div>
 
                 {/* Receive button */}
@@ -341,7 +343,7 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
                   <motion.button
                     onClick={handleReceive}
                     whileTap={{ scale: 0.97 }}
-                    style={{ width: "100%", padding: "16px 0", borderRadius: 99, background: "#473B35", color: "#FFFFFF", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 15, letterSpacing: 2, border: "none", cursor: "pointer", boxShadow: "0 6px 24px rgba(71,59,53,0.25)" }}>
+                    style={{ width: "100%", padding: "16px 0", borderRadius: 99, background: themeVisual.primaryColor, color: "#FFFFFF", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 15, letterSpacing: 2, border: "none", cursor: "pointer", boxShadow: "0 6px 24px rgba(71,59,53,0.25)" }}>
                     {receiverButtonText}
                   </motion.button>
                   <p style={{ fontFamily: "'Noto Sans SC', sans-serif", color: "#C5BAB2", fontSize: 11, textAlign: "center", letterSpacing: 1, margin: "12px 0 0" }}>
@@ -359,24 +361,24 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
               transition={{ duration: 0.5, ease: "easeOut" }}
               style={{ padding: "72px 24px 48px", display: "flex", flexDirection: "column", gap: 0, position: "relative", zIndex: 1 }}>
 
-              <div style={{ borderRadius: 28, background: "#FFFFFF", boxShadow: "0 12px 60px rgba(63,52,47,0.09)", overflow: "hidden" }}>
-                <div style={{ height: 3, background: "linear-gradient(90deg,#C9A66B,#E8C98A,#C9A66B)" }} />
+              <div style={{ borderRadius: themeVisual.cardRadius, background: themeVisual.surfaceBackground, border: `1px solid ${themeVisual.borderColor}`, boxShadow: "0 12px 60px rgba(63,52,47,0.09)", overflow: "hidden" }}>
+                <div style={{ height: 3, background: themeVisual.topRule }} />
 
                 <div style={{ padding: "28px 28px 0" }}>
-                  <p style={{ fontFamily: "'Lora', serif", color: "#C9A66B", fontSize: 10, letterSpacing: 4, textTransform: "uppercase", margin: "0 0 10px" }}>
-                    Acknowledgment Receipt
+                  <p style={{ fontFamily: "'Lora', serif", color: themeVisual.accentColor, fontSize: 10, letterSpacing: 4, textTransform: "uppercase", margin: "0 0 10px" }}>
+                    {themeVisual.letterLabel}
                   </p>
                   <h1 style={{ fontFamily: "'Noto Serif SC', serif", color: "#3F342F", fontSize: 26, letterSpacing: 4, margin: "0 0 20px", lineHeight: 1.35 }}>
                     {centralLetterTitle}
                   </h1>
-                  <div style={{ height: 1, background: "#EAE2D8" }} />
+                  <div style={{ height: 1, background: themeVisual.borderColor }} />
                 </div>
 
                 <div style={{ padding: "22px 28px 0", display: "flex", flexDirection: "column", gap: 16 }}>
                   <p style={{ fontFamily: "'Noto Serif SC', serif", color: "#3F342F", fontSize: 15, lineHeight: 2.1, textIndent: "2em", letterSpacing: 0.5, margin: 0 }}>
                     {centralLetterBodyP1}
                   </p>
-                  <div style={{ borderLeft: "3px solid #C9A66B", background: "#FAF7F0", borderRadius: "0 12px 12px 0", padding: "14px 18px" }}>
+                  <div style={{ borderLeft: `3px solid ${themeVisual.accentColor}`, background: themeVisual.accentSoftColor, borderRadius: "0 12px 12px 0", padding: "14px 18px" }}>
                     <p style={{ fontFamily: "'Lora', serif", color: "#9B8E86", fontSize: 14, lineHeight: 1.9, fontStyle: "italic", margin: 0 }}>
                       "{centralLetterQuote}"
                     </p>
@@ -392,7 +394,7 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
                       </span>
                     </div>
                   </div>
-                  <div style={{ height: 1, background: "#EAE2D8" }} />
+                  <div style={{ height: 1, background: themeVisual.borderColor }} />
                 </div>
 
                 {/* Gold received button */}
@@ -400,7 +402,7 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
                   <motion.button
                     initial={{ scale: 0.95 }} animate={{ scale: 1 }}
                     transition={{ type: "spring", stiffness: 200, damping: 16 }}
-                    style={{ width: "100%", padding: "16px 0", borderRadius: 99, background: "linear-gradient(135deg,#C9A66B 0%,#DFB87A 50%,#C9A66B 100%)", color: "#FFFFFF", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 15, letterSpacing: 2, border: "none", cursor: "default", boxShadow: "0 6px 28px rgba(201,166,107,0.4)" }}>
+                    style={{ width: "100%", padding: "16px 0", borderRadius: 99, background: themeVisual.topRule, color: "#FFFFFF", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 15, letterSpacing: 2, border: "none", cursor: "default", boxShadow: "0 6px 28px rgba(201,166,107,0.4)" }}>
                     {receivedPrimaryText}
                   </motion.button>
 
