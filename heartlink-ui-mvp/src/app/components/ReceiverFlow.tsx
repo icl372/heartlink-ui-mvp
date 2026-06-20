@@ -119,7 +119,9 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
   const centralLetterSignoff = gift?.copy.signoff ?? "";
   const coverText = gift?.copy.coverText ?? "";
   const receiverButtonText = gift?.copy.buttonText?.trim() || "收下心意";
-  const receivedText = gift?.copy.acceptedText?.trim() || "这份心意已被好好收藏";
+  // Keep the received-state CTA distinct from the token-specific completion detail.
+  const receivedPrimaryText = "已收下这份心意";
+  const receivedDetailText = gift?.copy.acceptedText?.trim() || "这份心意已被珍藏";
   const createdDateLabel = getCreatedDateLabel(gift?.createdAt, scene);
   const acceptedDateLabel = formatAcceptedDate(gift?.acceptedAt);
 
@@ -399,7 +401,7 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
                     initial={{ scale: 0.95 }} animate={{ scale: 1 }}
                     transition={{ type: "spring", stiffness: 200, damping: 16 }}
                     style={{ width: "100%", padding: "16px 0", borderRadius: 99, background: "linear-gradient(135deg,#C9A66B 0%,#DFB87A 50%,#C9A66B 100%)", color: "#FFFFFF", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 15, letterSpacing: 2, border: "none", cursor: "default", boxShadow: "0 6px 28px rgba(201,166,107,0.4)" }}>
-                    {receivedText}
+                    {receivedPrimaryText}
                   </motion.button>
 
                   {/* Received confirmation */}
@@ -415,7 +417,7 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
                       <Heart size={10} color="#C9A66B" fill="#C9A66B" />
                     </div>
                     <p style={{ fontFamily: "'Noto Serif SC', serif", color: "#C5BAB2", fontSize: 12, letterSpacing: 0.5, margin: 0 }}>
-                      这份心意已被珍藏
+                      {receivedDetailText}
                     </p>
                   </motion.div>
                 </div>
