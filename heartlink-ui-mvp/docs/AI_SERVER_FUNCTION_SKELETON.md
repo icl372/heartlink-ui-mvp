@@ -136,3 +136,17 @@ TODO-031 may implement a provider call only after all of the following are true:
 3. The server-only secret path is configured outside Git.
 4. The implementation can keep the browser free of provider keys and provider requests.
 5. The existing mock flow remains available until TODO-032 performs the frontend service-path switch.
+
+## 10. TODO-031 Vercel Function Implementation
+
+TODO-031 selects Vercel Functions as the server host and adds:
+
+```text
+api/generate-copy.ts
+```
+
+The function accepts `POST`, validates the current copy input contract, reads server-only `DEEPSEEK_API_KEY`, and returns either the current `GenerateCopyResult` shape or the existing normalized AI error codes.
+
+The function is the only repository location that contains the provider request. The browser still uses the current mock `giftService.generateCopy()` implementation until TODO-032 explicitly switches the frontend path.
+
+`.env.example` contains only empty server variable names for local reference. Real values must be configured in Vercel Project Settings and must never be committed.
