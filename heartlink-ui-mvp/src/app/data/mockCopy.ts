@@ -1,6 +1,15 @@
 import type { GenerateCopyInput, GenerateCopyResult } from "../types";
 
 export const DEFAULT_CREATE_GIFT_INPUT: GenerateCopyInput = {
+  recipientName: "",
+  senderName: "",
+  occasion: "感谢",
+  tone: "真诚",
+  amountText: "",
+  originalMessage: "",
+};
+
+export const MOCK_GIFT_INPUT: GenerateCopyInput = {
   recipientName: "最亲爱的妈妈",
   senderName: "您的专属宝贝",
   occasion: "感谢",

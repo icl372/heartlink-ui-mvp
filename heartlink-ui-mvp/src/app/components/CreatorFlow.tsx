@@ -519,18 +519,18 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
 
               {/* Fields */}
               <FormField label="收信人" required>
-                <input value={recipient} onChange={e => setRecipient(e.target.value)} placeholder="例如：最亲爱的妈妈"
+                <input value={recipient} onChange={e => setRecipient(e.target.value)} placeholder="例如：妈妈 / 朋友 / 小林"
                   style={inputStyle} />
               </FormField>
 
               <FormField label="署名">
-                <input value={sender} onChange={e => setSender(e.target.value)} placeholder="例如：您的女儿"
+                <input value={sender} onChange={e => setSender(e.target.value)} placeholder="例如：你的名字 / 女儿 / 老朋友"
                   style={inputStyle} />
               </FormField>
 
               <FormField label="想说的话" required hint={`${message.length} 字 · 建议 30–150 字`}>
                 <textarea value={message} onChange={e => setMessage(e.target.value)}
-                  placeholder="简单说说，AI 会帮你润色成一封动人的信…"
+                  placeholder="例如：祝你天天开心，顺顺利利。谢谢你一直以来的照顾。"
                   rows={5} style={{ ...inputStyle, resize: "none", lineHeight: 1.9 }} />
               </FormField>
 
@@ -538,7 +538,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
                 <FormField label="金额（仅用于文案展示）">
                   <div style={{ position: "relative" }}>
                     <span style={{ position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)", fontFamily: "'Noto Sans SC', sans-serif", color: "#9B8E86", fontSize: 14 }}>¥</span>
-                    <input value={amount} onChange={e => setAmount(e.target.value)} placeholder="200" type="number"
+                    <input value={amount} onChange={e => setAmount(e.target.value)} placeholder="例如：200" type="number"
                       style={{ ...inputStyle, paddingLeft: 32 }} />
                   </div>
                 </FormField>
