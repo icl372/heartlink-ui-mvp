@@ -440,3 +440,117 @@ MVP 后续需要支持真实链接：
 12. 是否仍遵守 `docs/DESIGN.md` 的 UI Lock。
 
 任一任务如果会改变 UI、路由、数据模型或服务端边界，必须先更新对应文档，再进入 TODO 与实现。
+
+## 20. TODO-028 Final Actual Structure Record
+
+This section is the final actual structure record for the current repository state. It supersedes older directory descriptions in this document when they conflict with the files below.
+
+Project root:
+
+```text
+heartlink-ui-mvp/
+  README.md
+  TODO.md
+  package.json
+  package-lock.json
+  vite.config.ts
+  index.html
+  postcss.config.mjs
+  default_shadcn_theme.css
+  pnpm-workspace.yaml
+  docs/
+  guidelines/
+  src/
+```
+
+Current documentation files:
+
+```text
+docs/
+  PRD.md
+  DESIGN.md
+  ARCHITECTURE.md
+  DEVELOPMENT_BASELINE.md
+  UI_INVENTORY.md
+  MOBILE_QA_TODO025.md
+  LINK_ROUTING_PLAN.md
+  AI_SERVICE_INTEGRATION.md
+  SUPABASE_FIELD_MAPPING.md
+  LOCAL_STORAGE_BOUNDARY.md
+  DEPLOYMENT.md
+```
+
+Current frontend structure:
+
+```text
+src/
+  main.tsx                         # React mount entry
+  app/
+    App.tsx                        # creator/receiver entry and token-aware mode selection
+    components/
+      CreatorFlow.tsx              # creator flow UI and local flow state
+      ReceiverFlow.tsx             # receiver UI and receiver state flow
+      figma/ImageWithFallback.tsx  # Figma Make image fallback helper
+      ui/                          # generated Radix/shadcn-style reusable primitives
+    data/
+      occasions.ts
+      tones.ts
+      themes.ts
+      mockCopy.ts
+      mockGifts.ts
+      index.ts
+    lib/
+      token.ts                     # token generation, validation, sanitization and encoding
+      giftUrl.ts                   # local gift URL creation and path/query/hash token parsing
+      index.ts
+    services/
+      giftService.ts               # mock generate/create/read/accept service boundary
+      index.ts
+    types/
+      gift.ts                      # Gift, GiftRecord and create/accept contracts
+      ai.ts                        # generateCopy input/output contract
+      errors.ts                    # UI-facing AI/app/copy error contracts
+      ui.ts                        # creator and receiver UI state unions
+      index.ts
+  imports/                         # Figma Make static image assets
+  styles/
+    index.css
+    fonts.css
+    globals.css
+    tailwind.css
+    theme.css
+```
+
+## 21. Current Runtime Boundaries
+
+Current implemented boundaries:
+
+1. `CreatorFlow.tsx` calls `generateCopy()` and `createGift()` through `src/app/services/`.
+2. `ReceiverFlow.tsx` calls `getGiftByToken()` and `acceptGift()` through `src/app/services/`.
+3. `App.tsx` renders the receiver flow when `getGiftTokenFromLocation()` finds a supported token route or query/hash token.
+4. `src/app/lib/giftUrl.ts` owns the current `/to/:token` route prefix and local-origin URL generation.
+5. `src/app/lib/token.ts` owns the current 10-16 character mock token rules.
+6. `src/app/data/` owns static option lists and mock content; UI components should not introduce a second source of mock data.
+
+Current mock-only implementation:
+
+1. `giftService.generateCopy()` returns local mock copy and exposes controlled mock error triggers for QA.
+2. `giftService.createGift()` creates a local mock gift and a local-origin URL.
+3. `giftService.getGiftByToken()` and `acceptGift()` read from the in-memory mock store, then LocalStorage mock preview storage.
+4. LocalStorage key `heartlink_mock_gifts` is only for same-browser mock preview, refresh, and new-tab QA. It is not a production link database.
+5. not-found and expired are retained mock branches for UI and QA coverage.
+
+Future replacement points, not implemented now:
+
+1. Replace `giftService.generateCopy()` internals with a call to an owned server function; the browser must not call AI providers directly.
+2. Replace `giftService.createGift()`, `getGiftByToken()`, and `acceptGift()` internals with a server-side data source such as Supabase.
+3. Keep the existing service signatures so `CreatorFlow.tsx` and `ReceiverFlow.tsx` do not require a UI rewrite.
+4. A future production `/g/:token` route is planned in `LINK_ROUTING_PLAN.md`; do not migrate from `/to/:token` in this task.
+5. A future static deployment must configure SPA fallback for direct receiver URLs; see `DEPLOYMENT.md`.
+
+## 22. Repository Hygiene
+
+1. `node_modules/`, `dist/`, `.env`, `.env.local`, `.DS_Store`, and development Vite logs are ignored and must not be committed.
+2. The authoritative project documentation lives in this repository's `docs/` directory, not in the parent workspace `docs/` directory.
+3. The original Figma Make directory remains outside the project and is read-only reference material.
+4. The known theme/style visual mapping issue remains a separate future task and does not change this structure record.
