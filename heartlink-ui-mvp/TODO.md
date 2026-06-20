@@ -545,3 +545,107 @@
 测试要求：运行 `npm run build`；抽查核心文件路径。
 
 完成后是否需要 git commit：需要。
+
+## Phase 9：真实 AI 接入准备与 DeepSeek 接入
+
+本阶段只处理 AI 服务接入边界。任何任务开始前必须先阅读 `docs/PRD.md`、`docs/DESIGN.md`、`docs/ARCHITECTURE.md`、`docs/AI_SERVICE_INTEGRATION.md`、`docs/LOCAL_STORAGE_BOUNDARY.md` 和本文件。
+
+全局安全规则：
+
+1. 浏览器前端不得直接请求 DeepSeek 或任何 AI provider。
+2. 不得在前端包、Git、`.env.example`、文档截图或 ChatGPT / Codex 对话中粘贴真实 API Key。
+3. 服务端密钥不得使用 `VITE_` 前缀；`VITE_` 变量会暴露在浏览器包中。
+4. DeepSeek API 文档、模型名、请求参数和限额规则必须在真实接入前以 DeepSeek 官方最新文档为准。
+5. 本阶段不接 Supabase、不接支付、不改 UI、不处理主题 / 风格映射问题、不真实部署。
+6. 既有 AI loading、success、failed、network-error、空输入状态必须保留并继续复用。
+7. 每次只执行一个 TODO；完成后运行构建、相关回归测试并提交明确的 Git commit。
+
+### TODO-029：补充 DeepSeek 接入方案
+
+任务编号：TODO-029
+
+任务名称：补充 DeepSeek 接入方案。
+
+修改目标：记录 `前端 -> 自有服务端函数 -> DeepSeek` 的调用路径、服务端函数职责、环境变量安全边界、错误映射、超时与 mock fallback 策略。
+
+允许修改范围：`docs/AI_SERVICE_INTEGRATION.md`，或新增一份 DeepSeek 接入方案文档。
+
+禁止修改范围：禁止修改 UI；禁止新增 API Key、`.env`、真实网络请求、Supabase、支付、部署配置；禁止直接接入 DeepSeek。
+
+验收标准：文档明确前端只调用自有服务端函数；明确真实密钥只存在于服务端 secret manager；明确 DeepSeek 官方文档需在 TODO-031 前再次核对；明确错误映射到现有 AI failed / network-error UI；明确 mock fallback 策略。
+
+测试要求：运行 `npm run build`；确认只修改 AI 接入方案文档。
+
+完成后是否需要 git commit：需要。
+
+### TODO-030：新增 AI 服务端函数骨架
+
+任务编号：TODO-030
+
+任务名称：新增 AI 服务端函数骨架。
+
+修改目标：准备一个不含真实 provider 调用的服务端函数骨架，定义前端请求、自有函数响应、输入校验和错误归一化边界。
+
+允许修改范围：经确认的服务端函数目录、共享 AI 类型、服务端函数说明文档，以及实现骨架所需的最小配置文件。
+
+禁止修改范围：禁止真实调用 DeepSeek；禁止新增真实 API Key 或 `.env`；禁止在浏览器端新增 provider 请求；禁止修改 `CreatorFlow.tsx` UI 结构、`ReceiverFlow.tsx`、Supabase、支付、主题 / 风格映射或部署配置。
+
+验收标准：服务端函数骨架可接收与 `GenerateCopyInput` 对应的请求；返回结构可映射到 `GenerateCopyResult` 或统一错误；源码中没有真实 DeepSeek URL、真实 key 或 provider 调用；现有 mock 流程仍可运行。
+
+测试要求：运行 `npm run build`；检查服务端函数骨架不影响前端构建；回归 AI mock 生成、AI 失败和网络错误状态。
+
+完成后是否需要 git commit：需要。
+
+### TODO-031：接入 DeepSeek API
+
+任务编号：TODO-031
+
+任务名称：接入 DeepSeek API。
+
+修改目标：仅在自有服务端函数内部调用 DeepSeek，并将 provider 响应归一化为既有 AI 合同。
+
+允许修改范围：服务端函数实现、服务端依赖、服务端环境变量示例文件（仅变量名，不含真实值）、AI 接入文档和必要的共享类型。
+
+禁止修改范围：禁止在前端、`src/app/`、浏览器 bundle、Git 历史、`.env.local`、文档或对话中写入真实 API Key；禁止前端直连 DeepSeek；禁止接入 Supabase、支付、UI 改版、主题 / 风格映射或真实部署。
+
+验收标准：真实 provider 请求只存在于服务端函数；密钥只从服务端环境变量读取；可新增 `.env.example` 但不得含真实值；DeepSeek 官方最新文档、模型参数和错误格式已在实现前核对；provider 错误可映射到现有统一 AI 错误类型。
+
+测试要求：运行 `npm run build`；在不提供真实密钥时确认前端 mock 路径仍可运行；仅在用户自行配置服务端 secret 后进行受控服务端联调，不在此仓库提交真实密钥。
+
+完成后是否需要 git commit：需要。
+
+### TODO-032：替换 generateCopy 的真实调用路径
+
+任务编号：TODO-032
+
+任务名称：替换 `generateCopy` 的真实调用路径。
+
+修改目标：让 `giftService.generateCopy()` 通过自有服务端函数请求真实 AI，同时保留明确的 mock fallback 或开发开关。
+
+允许修改范围：`src/app/services/giftService.ts`、服务调用 helper、共享类型、AI 接入文档，以及保持现有状态映射所需的最小调整。
+
+禁止修改范围：禁止让 `CreatorFlow.tsx` 直接调用 DeepSeek；禁止删除 AI loading、success、failed、network-error、空输入状态；禁止改 UI 视觉、成功页隐私提示、ReceiverFlow、Supabase、支付、主题 / 风格映射或部署配置。
+
+验收标准：前端只调用自有服务端函数；mock fallback 的启用条件清晰且不依赖真实密钥；正常结果映射到现有可编辑文案字段；失败、网络错误和空内容继续映射到现有 UI 状态；UI 流程与视觉不变。
+
+测试要求：运行 `npm run build`；测试 mock 正常生成、空输入、AI 失败、网络错误、空内容；在已安全配置的服务端环境中再单独测试真实 AI 路径。
+
+完成后是否需要 git commit：需要。
+
+### TODO-033：AI 接入回归测试
+
+任务编号：TODO-033
+
+任务名称：AI 接入回归测试。
+
+修改目标：验证真实 AI 路径和 mock fallback 不破坏创建端、链接生成和接收端既有流程。
+
+允许修改范围：测试清单、AI 接入文档、必要的测试辅助文件；仅允许修复已确认的最小构建或状态映射 bug。
+
+禁止修改范围：禁止 UI 重写；禁止删除现有异常状态；禁止新增或提交真实 key、`.env.local`、Supabase、支付、部署配置；禁止处理主题 / 风格映射问题。
+
+验收标准：覆盖正常生成、DeepSeek 服务失败、网络错误、内容为空、输入为空、mock fallback、`npm run build`；确认生成链接、复制链接、接收端 loading / cover / letter / received、not-found 和 expired 回归正常；确认 UI 无明显变化。
+
+测试要求：运行 `npm run build`；运行开发服务；执行创建端与接收端主流程和异常状态人工验收；确认任何真实服务端密钥均未出现在 Git 状态、构建产物或前端请求中。
+
+完成后是否需要 git commit：需要。
