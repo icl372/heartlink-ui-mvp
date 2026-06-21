@@ -451,6 +451,7 @@ Project root:
 heartlink-ui-mvp/
   README.md
   TODO.md
+  api/                              # Vercel Functions
   package.json
   package-lock.json
   vite.config.ts
@@ -531,6 +532,7 @@ Current implemented boundaries:
 4. `src/app/lib/giftUrl.ts` owns the current `/to/:token` route prefix and local-origin URL generation.
 5. `src/app/lib/token.ts` owns the current 10-16 character mock token rules.
 6. `src/app/data/` owns static option lists and mock content; UI components should not introduce a second source of mock data.
+7. `api/create-gift.ts` is an owned Vercel Function that can write a created gift to Supabase when the non-secret `VITE_USE_SUPABASE` selector is enabled in the frontend build. It reads `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` only on the server.
 
 Current mock-only implementation:
 
@@ -539,6 +541,7 @@ Current mock-only implementation:
 3. `giftService.getGiftByToken()` and `acceptGift()` read from the in-memory mock store, then LocalStorage mock preview storage.
 4. LocalStorage key `heartlink_mock_gifts` is only for same-browser mock preview, refresh, and new-tab QA. It is not a production link database.
 5. not-found and expired are retained mock branches for UI and QA coverage.
+6. Receiver reads and accept writes remain mock/localStorage-only until TODO-038 and TODO-039; TODO-037 changes only the create write path.
 
 Future replacement points, not implemented now:
 

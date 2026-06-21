@@ -2,9 +2,9 @@
 
 ## Current State
 
-HeartLink currently uses `giftService.ts` as the stable create, read, and accept boundary. Created gifts are stored only in an in-memory map and the same-browser LocalStorage mock store. That is sufficient for preview, refresh, and new-tab QA on one browser, but it cannot support cross-device or recipient sharing.
+HeartLink uses `giftService.ts` as the stable create, read, and accept boundary. TODO-037 adds an owned Vercel Function at `/api/create-gift`: when the public, non-secret `VITE_USE_SUPABASE` flag is enabled, `giftService.createGift()` calls that endpoint and the Function writes a gift to Supabase using server-only credentials.
 
-This document plans the Supabase replacement behind the existing service contracts. It does not create a Supabase project, install a client, add environment files, or change runtime behavior.
+The same-browser in-memory and LocalStorage mock store remains in place after a successful create so preview and new-tab QA continue to work until TODO-038 changes the receiver read path. This task does not install a browser Supabase client or change receiver reads.
 
 ## Goals
 
@@ -133,6 +133,14 @@ The current `ReceiverState` has no dedicated network-error variant. TODO-038 and
 - Requires: Supabase project/table/RLS setup and server-only `SUPABASE_SERVICE_ROLE_KEY` in Vercel.
 - Acceptance: anonymous creation returns a token and `/to/:token`; the row has the requested content and theme; current local mock mode remains available for QA.
 - Manual verification: Vercel deployment creates a gift and the returned token survives reload.
+
+### TODO-037 Implementation Record
+
+1. `api/create-gift.ts` accepts POST only, validates the existing create payload, generates a token server-side, and inserts the mapped fields into `public.gifts` through Supabase REST.
+2. The Function reads only `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` from its server environment. It returns sanitized application errors and never returns Supabase provider details.
+3. `giftService.createGift()` uses `/api/create-gift` only when `VITE_USE_SUPABASE=true`. On success it still writes the returned gift into the existing same-browser mock store; when the flag is not enabled it preserves the existing mock create behavior.
+4. The existing table mapping does not have a separate `signoff` column. TODO-038 must either map display signoff from `sender_name` or add an approved schema/type mapping before it reads real gifts. TODO-037 does not alter the existing table schema.
+5. Receiver reads and accept writes are intentionally unchanged in this task.
 
 ## TODO-038 Boundary: Read Gifts by Token
 

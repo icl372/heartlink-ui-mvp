@@ -24,8 +24,11 @@ const MOCK_AI_FAILURE_TRIGGER = "__mock_ai_error__";
 const MOCK_AI_EMPTY_CONTENT_TRIGGER = "__mock_empty_content__";
 const MOCK_AI_UNAVAILABLE_TRIGGER = "__mock_ai_unavailable__";
 const OWNED_GENERATE_COPY_ENDPOINT = "/api/generate-copy";
+const OWNED_CREATE_GIFT_ENDPOINT = "/api/create-gift";
 // This public flag only selects the owned API route. It is not a provider secret.
 const USE_REAL_AI = import.meta.env.VITE_USE_REAL_AI === "true";
+// This public flag only selects the owned gift-create route. It is not a database credential.
+const USE_SUPABASE = import.meta.env.VITE_USE_SUPABASE === "true";
 export const MOCK_EXPIRED_GIFT_TOKEN = "mock-heartlink-expired";
 const mockGiftStore = new Map<string, Gift>([
   [MOCK_GIFT_TOKEN, { ...MOCK_GIFT }],
@@ -80,6 +83,33 @@ function readAiErrorCode(payload: unknown): AiGenerationError["code"] | undefine
     : undefined;
 }
 
+function createAppError(code: AppError["code"], message: string): AppError {
+  return { code, message };
+}
+
+function readAppErrorCode(payload: unknown): AppError["code"] | undefined {
+  if (typeof payload !== "object" || payload === null || !("error" in payload)) {
+    return undefined;
+  }
+
+  const error = payload.error;
+
+  if (typeof error !== "object" || error === null || !("code" in error)) {
+    return undefined;
+  }
+
+  const code = error.code;
+  const supportedCodes: AppError["code"][] = [
+    "validation-empty",
+    "network-error",
+    "unknown",
+  ];
+
+  return typeof code === "string" && supportedCodes.includes(code as AppError["code"])
+    ? code as AppError["code"]
+    : undefined;
+}
+
 function isGenerateCopyResult(payload: unknown): payload is GenerateCopyResult {
   if (typeof payload !== "object" || payload === null) return false;
 
@@ -127,6 +157,56 @@ async function generateCopyFromOwnedApi(input: GenerateCopyInput): Promise<Gener
 
   if (!isGenerateCopyResult(payload)) {
     throw createAiGenerationError("ai-content-empty", getSafeAiErrorMessage("ai-content-empty"));
+  }
+
+  return payload;
+}
+
+function isCreateGiftResult(payload: unknown): payload is CreateGiftResult {
+  if (typeof payload !== "object" || payload === null) return false;
+
+  const value = payload as Partial<CreateGiftResult>;
+
+  return typeof value.token === "string"
+    && Boolean(value.token.trim())
+    && typeof value.giftUrl === "string"
+    && Boolean(value.giftUrl.trim())
+    && typeof value.gift === "object"
+    && value.gift !== null
+    && typeof value.gift.recipientName === "string"
+    && typeof value.gift.originalMessage === "string"
+    && typeof value.gift.copy === "object"
+    && value.gift.copy !== null;
+}
+
+async function createGiftFromOwnedApi(input: CreateGiftInput): Promise<CreateGiftResult> {
+  let response: Response;
+
+  try {
+    response = await fetch(OWNED_CREATE_GIFT_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+  } catch {
+    throw createAppError("network-error", "Unable to create the gift.");
+  }
+
+  let payload: unknown;
+
+  try {
+    payload = await response.json();
+  } catch {
+    throw createAppError("unknown", "Unable to create the gift.");
+  }
+
+  if (!response.ok) {
+    const code = readAppErrorCode(payload) ?? "unknown";
+    throw createAppError(code, "Unable to create the gift.");
+  }
+
+  if (!isCreateGiftResult(payload)) {
+    throw createAppError("unknown", "Unable to create the gift.");
   }
 
   return payload;
@@ -235,6 +315,26 @@ export async function generateCopy(input: GenerateCopyInput): Promise<GenerateCo
 
 export async function createGift(input: CreateGiftInput): Promise<CreateGiftResult> {
   await delay();
+
+  if (USE_SUPABASE) {
+    const createdGift = await createGiftFromOwnedApi(input);
+    const giftUrl = createGiftUrl(createdGift.token);
+    const gift: Gift = {
+      ...createdGift.gift,
+      token: createdGift.token,
+      giftUrl,
+    };
+
+    // Preserve same-browser preview until TODO-038 reads real tokens from Supabase.
+    mockGiftStore.set(createdGift.token, gift);
+    writeStoredMockGift(gift);
+
+    return {
+      gift,
+      token: createdGift.token,
+      giftUrl,
+    };
+  }
 
   const token = generateGiftToken();
   const giftUrl = createGiftUrl(token);
