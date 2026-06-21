@@ -1,4 +1,4 @@
-import { generateGiftToken } from "../src/app/lib/token";
+import { randomBytes } from "node:crypto";
 import type { CreateGiftInput, Gift, GiftCopy, GiftTheme } from "../src/app/types/gift";
 import type { AppErrorCode } from "../src/app/types/errors";
 
@@ -31,6 +31,8 @@ const SAFE_BUTTON_TEXT = "收下心意";
 const SAFE_ACCEPTED_TEXT = "这份心意已被珍藏";
 const MAX_TOKEN_INSERT_ATTEMPTS = 3;
 const MAX_ACCEPTED_TEXT_LENGTH = 12;
+const SERVER_TOKEN_LENGTH = 16;
+const SERVER_TOKEN_ALPHABET = "23456789abcdefghijkmnopqrstuvwxyz";
 const GIFT_OCCASIONS = new Set(["感谢", "祝福", "道歉", "鼓励", "小心意"]);
 const GIFT_TONES = new Set(["真诚", "温柔", "可爱", "克制", "正式", "诗意"]);
 const GIFT_THEMES = new Set<GiftTheme>(["温柔信纸", "复古收据", "诗意卡片", "简约便签"]);
@@ -42,6 +44,13 @@ function sendError(
   message: string,
 ) {
   return response.status(statusCode).json({ ok: false, error: { code, message } });
+}
+
+function generateServerToken() {
+  return Array.from(
+    randomBytes(SERVER_TOKEN_LENGTH),
+    byte => SERVER_TOKEN_ALPHABET[byte & 31],
+  ).join("");
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -215,7 +224,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
   }
 
   for (let attempt = 0; attempt < MAX_TOKEN_INSERT_ATTEMPTS; attempt += 1) {
-    const token = generateGiftToken();
+    const token = generateServerToken();
     const now = new Date().toISOString();
 
     let supabaseResponse: Response;
