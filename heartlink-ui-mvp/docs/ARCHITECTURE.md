@@ -529,7 +529,7 @@ Current implemented boundaries:
 1. `CreatorFlow.tsx` calls `generateCopy()` and `createGift()` through `src/app/services/`.
 2. `ReceiverFlow.tsx` calls `getGiftByToken()` and `acceptGift()` through `src/app/services/`.
 3. `App.tsx` renders the receiver flow when `getGiftTokenFromLocation()` finds a supported token route or query/hash token.
-4. `src/app/lib/giftUrl.ts` owns the current `/to/:token` route prefix and local-origin URL generation.
+4. `src/app/lib/giftUrl.ts` owns the current `/to/:token` route prefix and shared-link origin selection: `VITE_PUBLIC_SITE_URL` first, then the current browser origin.
 5. `src/app/lib/token.ts` owns the current 10-16 character mock token rules.
 6. `src/app/data/` owns static option lists and mock content; UI components should not introduce a second source of mock data.
 7. `api/create-gift.ts` is an owned Vercel Function that can write a created gift to Supabase when the non-secret `VITE_USE_SUPABASE` selector is enabled in the frontend build. It reads `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` only on the server.

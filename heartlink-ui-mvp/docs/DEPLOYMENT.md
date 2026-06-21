@@ -12,7 +12,7 @@ The current project is a frontend MVP with mock services.
 
 - `npm run build` produces static assets in `dist/`.
 - Gift data currently uses in-memory and LocalStorage mock preview storage.
-- Current generated links are local mock links based on `window.location.origin`.
+- Generated share links use `VITE_PUBLIC_SITE_URL` when configured, then fall back to `window.location.origin` for local development.
 - A deployed static site cannot turn LocalStorage mock data into a cross-device production gift link.
 
 Do not describe the current static deployment as a production data service. Real cross-device gift links require a later server-side data source and service implementation.
@@ -76,7 +76,7 @@ Provider-specific rewrites or redirect files must be added only in a separate ap
 
 ## 6. Environment Variable and Secret Boundary
 
-No environment variable is required for the current mock-only frontend.
+`VITE_PUBLIC_SITE_URL` is a public browser-visible configuration value for the canonical share-link origin. Set it to the Production URL, without a trailing slash, so links created from Preview or long Vercel deployment URLs still point to the public site.
 
 When real services are added later:
 
@@ -84,7 +84,7 @@ When real services are added later:
 - Never prefix a secret with `VITE_`. Vite exposes `VITE_` variables in the browser bundle.
 - Store provider secrets only in a server-side function or host secret manager.
 - A future public configuration value must be reviewed before adding it. Do not hard-code an unconfirmed production domain.
-- Continue using `window.location.origin` for the current mock link flow until an approved production URL strategy exists.
+- When `VITE_PUBLIC_SITE_URL` is absent, `createGiftUrl()` falls back to `window.location.origin` for local preview.
 
 ## 7. Future Deployment Smoke Test
 

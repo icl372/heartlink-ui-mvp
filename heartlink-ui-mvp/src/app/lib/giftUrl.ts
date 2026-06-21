@@ -4,6 +4,12 @@ export const GIFT_ROUTE_PREFIX = "/to";
 export const DEFAULT_LOCAL_APP_ORIGIN = "http://localhost:5173";
 const GIFT_TOKEN_QUERY_KEYS = ["token", "gift"] as const;
 
+export function getPublicSiteOrigin() {
+  const configuredOrigin = import.meta.env.VITE_PUBLIC_SITE_URL?.trim();
+
+  return configuredOrigin ? configuredOrigin.replace(/\/+$/, "") : undefined;
+}
+
 export function getLocalAppOrigin() {
   if (typeof window !== "undefined" && window.location.origin) {
     return window.location.origin;
@@ -12,7 +18,7 @@ export function getLocalAppOrigin() {
   return DEFAULT_LOCAL_APP_ORIGIN;
 }
 
-export function createGiftUrl(token: string, origin = getLocalAppOrigin()) {
+export function createGiftUrl(token: string, origin = getPublicSiteOrigin() ?? getLocalAppOrigin()) {
   const safeOrigin = origin.replace(/\/+$/, "");
   const tokenSegment = isValidGiftToken(token)
     ? encodeGiftToken(token)

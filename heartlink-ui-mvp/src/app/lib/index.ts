@@ -18,4 +18,5 @@ export {
   getGiftTokenFromPathname,
   getGiftTokenFromSearch,
   getLocalAppOrigin,
+  getPublicSiteOrigin,
 } from "./giftUrl";
