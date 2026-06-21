@@ -84,6 +84,10 @@ The future function should:
 
 Rate limiting, retry policy, abuse protection, provider model selection, and prompt versioning belong to the server-function implementation task, not the UI layer.
 
+## 11. Implemented Rate Limit Boundary
+
+`/api/generate-copy` now checks server-side rate limits before calling DeepSeek. It stores only a salted SHA-256 client key, route, timestamp, blocked flag, and reason in Supabase `ai_usage_events`; it never stores raw IPs, user inputs, generated copy, or provider responses. A missing salt or unavailable usage store fails closed with `ai-service-unavailable`, while an exceeded limit returns HTTP `429` with `rate-limited` and does not call DeepSeek.
+
 ## 6. Error Mapping
 
 The server function and frontend service must use the current error codes in `src/app/types/errors.ts`:

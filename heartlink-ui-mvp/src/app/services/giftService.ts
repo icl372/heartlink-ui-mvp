@@ -56,6 +56,7 @@ function getSafeAiErrorMessage(code: AiGenerationError["code"]) {
     "ai-generation-failed": "AI generation failed.",
     "ai-content-empty": "AI returned empty copy content.",
     "ai-service-unavailable": "AI service is unavailable.",
+    "rate-limited": "AI generation is temporarily limited.",
     "network-error": "Unable to reach the AI service.",
   };
 
@@ -79,6 +80,7 @@ function readAiErrorCode(payload: unknown): AiGenerationError["code"] | undefine
     "ai-generation-failed",
     "ai-content-empty",
     "ai-service-unavailable",
+    "rate-limited",
     "network-error",
   ];
 

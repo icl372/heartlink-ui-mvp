@@ -85,6 +85,7 @@ When real services are added later:
 - Store provider secrets only in a server-side function or host secret manager.
 - A future public configuration value must be reviewed before adding it. Do not hard-code an unconfirmed production domain.
 - When `VITE_PUBLIC_SITE_URL` is absent, `createGiftUrl()` falls back to `window.location.origin` for local preview.
+- Production AI generation requires server-only `AI_RATE_LIMIT_ENABLED=true` and a non-empty `RATE_LIMIT_SALT`, plus the optional numeric limit overrides documented in `.env.example`. Run `docs/AI_RATE_LIMIT_SQL.md` in Supabase before enabling this path. These values must never use a `VITE_` prefix.
 
 ## 7. Future Deployment Smoke Test
 

@@ -535,6 +535,7 @@ Current implemented boundaries:
 7. `api/create-gift.ts` is an owned Vercel Function that can write a created gift to Supabase when the non-secret `VITE_USE_SUPABASE` selector is enabled in the frontend build. It reads `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` only on the server.
 8. `api/get-gift.ts` is an owned Vercel Function that reads one gift by token from Supabase. It uses the same server-only variables and performs no receiver state write-back.
 9. `api/update-gift-status.ts` is an owned Vercel Function for scoped receiver `opened` and idempotent `accepted` updates. It reads the same server-only variables and never exposes database credentials to the browser.
+10. `api/generate-copy.ts` checks a server-side Supabase-backed rate limit before any DeepSeek request. It records only a salted client-key hash and minimal usage metadata; unavailable limit storage fails closed rather than allowing unbounded provider calls.
 
 Current mock-only implementation:
 

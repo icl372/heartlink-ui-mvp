@@ -3,6 +3,7 @@ export type AppErrorCode =
   | "ai-generation-failed"
   | "ai-content-empty"
   | "ai-service-unavailable"
+  | "rate-limited"
   | "network-error"
   | "create-gift-failed"
   | "copy-link-failed"
@@ -15,6 +16,7 @@ export type AiGenerationErrorCode =
   | "ai-generation-failed"
   | "ai-content-empty"
   | "ai-service-unavailable"
+  | "rate-limited"
   | "network-error";
 
 export type AiErrorUiStatus = "failed" | "network-error";
@@ -24,6 +26,7 @@ export const AI_ERROR_UI_STATUS_MAP = {
   "ai-generation-failed": "failed",
   "ai-content-empty": "failed",
   "ai-service-unavailable": "failed",
+  "rate-limited": "failed",
   "network-error": "network-error",
 } as const satisfies Record<AiGenerationErrorCode, AiErrorUiStatus>;
 

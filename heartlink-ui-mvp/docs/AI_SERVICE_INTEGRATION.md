@@ -78,6 +78,7 @@ CreatorFlow.tsx -> generateCopy(input) -> service function endpoint -> AI provid
 3. `ai-content-empty`
 4. `ai-service-unavailable`
 5. `network-error`
+6. `rate-limited`
 
 前端 UI 继续复用当前已有状态：
 
@@ -85,6 +86,7 @@ CreatorFlow.tsx -> generateCopy(input) -> service function endpoint -> AI provid
 2. AI success
 3. AI failed
 4. network-error
+5. failed / service-busy treatment for `rate-limited`
 
 不要新增大面积错误页，不要暴露 provider 技术错误给普通用户。
 
