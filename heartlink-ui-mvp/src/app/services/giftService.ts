@@ -102,6 +102,7 @@ function readAppErrorCode(payload: unknown): AppError["code"] | undefined {
   const supportedCodes: AppError["code"][] = [
     "validation-empty",
     "network-error",
+    "create-gift-failed",
     "unknown",
   ];
 
@@ -162,12 +163,15 @@ async function generateCopyFromOwnedApi(input: GenerateCopyInput): Promise<Gener
   return payload;
 }
 
-function isCreateGiftResult(payload: unknown): payload is CreateGiftResult {
+type CreateGiftApiResult = CreateGiftResult & { ok: true };
+
+function isCreateGiftResult(payload: unknown): payload is CreateGiftApiResult {
   if (typeof payload !== "object" || payload === null) return false;
 
-  const value = payload as Partial<CreateGiftResult>;
+  const value = payload as Partial<CreateGiftApiResult>;
 
-  return typeof value.token === "string"
+  return value.ok === true
+    && typeof value.token === "string"
     && Boolean(value.token.trim())
     && typeof value.giftUrl === "string"
     && Boolean(value.giftUrl.trim())
@@ -179,7 +183,7 @@ function isCreateGiftResult(payload: unknown): payload is CreateGiftResult {
     && value.gift.copy !== null;
 }
 
-async function createGiftFromOwnedApi(input: CreateGiftInput): Promise<CreateGiftResult> {
+async function createGiftFromOwnedApi(input: CreateGiftInput): Promise<CreateGiftApiResult> {
   let response: Response;
 
   try {
@@ -201,12 +205,12 @@ async function createGiftFromOwnedApi(input: CreateGiftInput): Promise<CreateGif
   }
 
   if (!response.ok) {
-    const code = readAppErrorCode(payload) ?? "unknown";
-    throw createAppError(code, "Unable to create the gift.");
+    const code = readAppErrorCode(payload) ?? "create-gift-failed";
+    throw createAppError(code, "创建失败，请稍后再试。");
   }
 
   if (!isCreateGiftResult(payload)) {
-    throw createAppError("unknown", "Unable to create the gift.");
+    throw createAppError("create-gift-failed", "创建失败，请稍后再试。");
   }
 
   return payload;

@@ -16,7 +16,7 @@ import {
 } from "../data";
 import { createGiftUrl } from "../lib";
 import { createGift, generateCopy } from "../services";
-import { getAiErrorUiStatus } from "../types";
+import { getAiErrorUiStatus, getAppErrorCode } from "../types";
 import type {
   AiGenerationStatus,
   CopyLinkStatus,
@@ -33,6 +33,7 @@ import type {
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Scene = GiftOccasion;
 type Style = GiftTheme;
+type CreateGiftStatus = "idle" | "creating" | "failed" | "network-error";
 type Tone = GiftTone;
 type AiStatus = AiGenerationStatus;
 type CopyStatus = CopyLinkStatus;
@@ -204,6 +205,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
   const [generatedAcceptedText, setGeneratedAcceptedText] = useState(MOCK_GENERATED_COPY.acceptedText);
   const [editingField, setEditingField] = useState<EditingField>(null);
   const [generatedLink, setGeneratedLink] = useState("");
+  const [createGiftStatus, setCreateGiftStatus] = useState<CreateGiftStatus>("idle");
   const generateRequestIdRef = useRef(0);
 
   const fallbackLink = createGiftUrl(MOCK_PREVIEW_TOKEN);
@@ -293,9 +295,18 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
   });
 
   const handleCreateGift = async () => {
-    const result = await createGift(buildCreateGiftInput());
-    setGeneratedLink(result.giftUrl);
-    setStep(CREATOR_STEPS.success);
+    if (createGiftStatus === "creating") return;
+
+    setCreateGiftStatus("creating");
+
+    try {
+      const result = await createGift(buildCreateGiftInput());
+      setGeneratedLink(result.giftUrl);
+      setCreateGiftStatus("idle");
+      setStep(CREATOR_STEPS.success);
+    } catch (error) {
+      setCreateGiftStatus(getAppErrorCode(error) === "network-error" ? "network-error" : "failed");
+    }
   };
 
   const handleCopy = async () => {
@@ -823,11 +834,21 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
                   style={{ flex: 1, padding: "14px 0", borderRadius: 99, background: "transparent", color: "#9B8E86", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 13, letterSpacing: 1, border: "1.5px solid #EAE2D8", cursor: "pointer" }}>
                   调整风格
                 </button>
-                <button onClick={() => { void handleCreateGift(); }}
-                  style={{ flex: 2, padding: "14px 0", borderRadius: 99, background: "#473B35", color: "#FFFFFF", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 14, letterSpacing: 2, border: "none", cursor: "pointer", boxShadow: "0 4px 20px rgba(71,59,53,0.25)" }}>
-                  生成链接
+                <button onClick={() => { void handleCreateGift(); }} disabled={createGiftStatus === "creating"}
+                  style={{ flex: 2, padding: "14px 0", borderRadius: 99, background: createGiftStatus === "creating" ? "#9B8E86" : "#473B35", color: "#FFFFFF", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 14, letterSpacing: 2, border: "none", cursor: createGiftStatus === "creating" ? "wait" : "pointer", boxShadow: "0 4px 20px rgba(71,59,53,0.25)" }}>
+                  {createGiftStatus === "creating" ? "正在生成链接…" : "生成链接"}
                 </button>
               </div>
+              {createGiftStatus === "failed" && (
+                <p role="alert" style={{ fontFamily: "'Noto Sans SC', sans-serif", color: "#B85C5C", fontSize: 12, textAlign: "center", letterSpacing: 0.5, margin: "2px 0 0" }}>
+                  创建失败，请稍后再试。
+                </p>
+              )}
+              {createGiftStatus === "network-error" && (
+                <p role="alert" style={{ fontFamily: "'Noto Sans SC', sans-serif", color: "#B85C5C", fontSize: 12, textAlign: "center", letterSpacing: 0.5, margin: "2px 0 0" }}>
+                  网络连接失败，请稍后重试。
+                </p>
+              )}
             </motion.div>
           )}
 

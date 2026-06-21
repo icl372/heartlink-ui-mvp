@@ -20,6 +20,7 @@ type VercelResponse = {
 type SupabaseInsertResponse = Array<{ id?: string }>;
 
 type CreateGiftPayload = {
+  ok: true;
   token: string;
   giftUrl: string;
   gift: Gift;
@@ -40,7 +41,7 @@ function sendError(
   code: AppErrorCode,
   message: string,
 ) {
-  return response.status(statusCode).json({ error: { code, message } });
+  return response.status(statusCode).json({ ok: false, error: { code, message } });
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -143,7 +144,7 @@ function createGiftPayload(input: CreateGiftInput, token: string, now: string, i
     acceptedAt: null,
   };
 
-  return { token, giftUrl, gift };
+  return { ok: true, token, giftUrl, gift };
 }
 
 function buildSupabaseRecord(input: CreateGiftInput, token: string, now: string) {
@@ -192,24 +193,25 @@ async function insertGift(
 export default async function handler(request: VercelRequest, response: VercelResponse) {
   if (request.method !== "POST") {
     response.setHeader?.("Allow", "POST");
-    return sendError(response, 405, "unknown", "Method not allowed.");
+    return sendError(response, 405, "create-gift-failed", "创建失败，请稍后再试。");
   }
 
   const input = readCreateGiftInput(request.body);
 
   if (!input?.recipientName || !input.originalMessage) {
-    return sendError(response, 400, "validation-empty", "Required gift input is empty.");
+    return sendError(response, 400, "validation-empty", "请补充必要内容后再创建。");
   }
 
   if (!input) {
-    return sendError(response, 400, "unknown", "Invalid gift input.");
+    return sendError(response, 400, "create-gift-failed", "创建失败，请稍后再试。");
   }
 
   const supabaseUrl = process.env.SUPABASE_URL?.trim().replace(/\/+$/, "");
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
   if (!supabaseUrl || !serviceRoleKey) {
-    return sendError(response, 503, "network-error", "Gift creation is unavailable.");
+    console.error("Supabase gift creation is unavailable: missing server configuration.");
+    return sendError(response, 503, "create-gift-failed", "创建失败，请稍后再试。");
   }
 
   for (let attempt = 0; attempt < MAX_TOKEN_INSERT_ATTEMPTS; attempt += 1) {
@@ -225,7 +227,8 @@ export default async function handler(request: VercelRequest, response: VercelRe
         buildSupabaseRecord(input, token, now),
       );
     } catch {
-      return sendError(response, 503, "network-error", "Gift creation is unavailable.");
+      console.error("Supabase gift insert request failed before a response.");
+      return sendError(response, 503, "network-error", "网络连接失败，请稍后重试。");
     }
 
     if (supabaseResponse.ok) {
@@ -234,7 +237,8 @@ export default async function handler(request: VercelRequest, response: VercelRe
       try {
         insertedRows = await supabaseResponse.json() as SupabaseInsertResponse;
       } catch {
-        return sendError(response, 502, "unknown", "Gift creation failed.");
+        console.error("Supabase gift insert returned an invalid success response.");
+        return sendError(response, 502, "create-gift-failed", "创建失败，请稍后再试。");
       }
 
       return response.status(201).json(
@@ -244,9 +248,11 @@ export default async function handler(request: VercelRequest, response: VercelRe
 
     // A unique-token collision is safe to retry; all other provider failures stay private.
     if (supabaseResponse.status !== 409) {
-      return sendError(response, 502, "network-error", "Gift creation failed.");
+      console.error("Supabase gift insert failed.", { status: supabaseResponse.status });
+      return sendError(response, 502, "create-gift-failed", "创建失败，请稍后再试。");
     }
   }
 
-  return sendError(response, 503, "network-error", "Gift creation is unavailable.");
+  console.error("Supabase gift token collision retry limit reached.");
+  return sendError(response, 503, "create-gift-failed", "创建失败，请稍后再试。");
 }

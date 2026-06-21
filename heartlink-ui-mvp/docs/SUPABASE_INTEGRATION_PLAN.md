@@ -136,9 +136,9 @@ The current `ReceiverState` has no dedicated network-error variant. TODO-038 and
 
 ### TODO-037 Implementation Record
 
-1. `api/create-gift.ts` accepts POST only, validates the existing create payload, generates a token server-side, and inserts the mapped fields into `public.gifts` through Supabase REST.
+1. `api/create-gift.ts` accepts POST only, validates the existing create payload, generates a token server-side, and inserts the mapped fields into `public.gifts` through Supabase REST. Its response contract is `{ ok: true, token, giftUrl, gift }` on success or `{ ok: false, error: { code, message } }` on failure.
 2. The Function reads only `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` from its server environment. It returns sanitized application errors and never returns Supabase provider details.
-3. `giftService.createGift()` uses `/api/create-gift` only when `VITE_USE_SUPABASE=true`. On success it still writes the returned gift into the existing same-browser mock store; when the flag is not enabled it preserves the existing mock create behavior.
+3. `giftService.createGift()` uses `/api/create-gift` only when `VITE_USE_SUPABASE=true`. On success it still writes the returned gift into the existing same-browser mock store; when the flag is not enabled it preserves the existing mock create behavior. Create failures are rethrown as application errors so the creator flow can leave the user on preview with a retryable inline error instead of appearing unresponsive.
 4. The existing table mapping does not have a separate `signoff` column. TODO-038 must either map display signoff from `sender_name` or add an approved schema/type mapping before it reads real gifts. TODO-037 does not alter the existing table schema.
 5. Receiver reads and accept writes are intentionally unchanged in this task.
 

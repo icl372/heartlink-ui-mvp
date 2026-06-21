@@ -4,6 +4,7 @@ export type AppErrorCode =
   | "ai-content-empty"
   | "ai-service-unavailable"
   | "network-error"
+  | "create-gift-failed"
   | "copy-link-failed"
   | "gift-not-found"
   | "gift-expired"
