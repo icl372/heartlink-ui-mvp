@@ -534,6 +534,7 @@ Current implemented boundaries:
 6. `src/app/data/` owns static option lists and mock content; UI components should not introduce a second source of mock data.
 7. `api/create-gift.ts` is an owned Vercel Function that can write a created gift to Supabase when the non-secret `VITE_USE_SUPABASE` selector is enabled in the frontend build. It reads `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` only on the server.
 8. `api/get-gift.ts` is an owned Vercel Function that reads one gift by token from Supabase. It uses the same server-only variables and performs no receiver state write-back.
+9. `api/update-gift-status.ts` is an owned Vercel Function for scoped receiver `opened` and idempotent `accepted` updates. It reads the same server-only variables and never exposes database credentials to the browser.
 
 Current mock-only implementation:
 
@@ -542,7 +543,7 @@ Current mock-only implementation:
 3. `giftService.getGiftByToken()` and `acceptGift()` read from the in-memory mock store, then LocalStorage mock preview storage.
 4. LocalStorage key `heartlink_mock_gifts` is only for same-browser mock preview, refresh, and new-tab QA. It is not a production link database.
 5. not-found and expired are retained mock branches for UI and QA coverage.
-6. Explicit mock tokens and accept writes remain local-only. TODO-038 adds real-token Supabase reads; TODO-039 remains responsible for all receiver state write-back.
+6. Explicit mock tokens retain local-only writes. For real tokens with `VITE_USE_SUPABASE=true`, TODO-039 records one browser-deduplicated open and an idempotent accepted state through the owned status endpoint.
 
 Future replacement points, not implemented now:
 

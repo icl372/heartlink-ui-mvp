@@ -166,6 +166,14 @@ The current `ReceiverState` has no dedicated network-error variant. TODO-038 and
 - Acceptance: first accept sets `accepted_at` and increments `accepted_count` once; refresh preserves the received state; failed writes do not falsely show success.
 - Manual verification: accept on one browser and reload or open the link on another browser.
 
+### TODO-039 Implementation Record
+
+1. `api/update-gift-status.ts` accepts only `POST` requests with `{ token, event }`, where `event` is limited to `opened` or `accepted`. It reads and updates only the matching `public.gifts` row through server-only `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
+2. An `opened` event increments `opened_count`. The browser records `heartlink:opened:<token>` after a successful update, so refreshes in the same browser do not repeatedly count the same opening. Receiver refs plus an in-flight service token set prevent duplicate effect calls, including React StrictMode's overlapping loads.
+3. An `accepted` event is idempotent: an existing `accepted_at` is returned unchanged; otherwise the Function uses an `accepted_at=is.null` conditional update to set the server timestamp and increment `accepted_count` once. A concurrent accepted update re-reads the persisted result instead of incrementing again.
+4. `ReceiverFlow` enters the received state directly when the Supabase read returns `accepted_at`, so reloads and other browsers keep the accepted state. Open analytics is best-effort and never blocks a readable gift; accept failures remain on the existing error boundary and do not falsely show success.
+5. TODO-040 remains AI cost protection. This work does not change AI, token/link generation, theme rendering, login, or payment behavior.
+
 ## Risks and Open Questions
 
 1. Anonymous create and write endpoints need abuse controls before broad release. Rate limiting and quotas are separate future work.

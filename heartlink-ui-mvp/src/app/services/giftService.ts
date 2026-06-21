@@ -26,6 +26,8 @@ const MOCK_AI_UNAVAILABLE_TRIGGER = "__mock_ai_unavailable__";
 const OWNED_GENERATE_COPY_ENDPOINT = "/api/generate-copy";
 const OWNED_CREATE_GIFT_ENDPOINT = "/api/create-gift";
 const OWNED_GET_GIFT_ENDPOINT = "/api/get-gift";
+const OWNED_UPDATE_GIFT_STATUS_ENDPOINT = "/api/update-gift-status";
+const OPENED_GIFT_STORAGE_PREFIX = "heartlink:opened:";
 // This public flag only selects the owned API route. It is not a provider secret.
 const USE_REAL_AI = import.meta.env.VITE_USE_REAL_AI === "true";
 // This public flag only selects the owned gift-create route. It is not a database credential.
@@ -34,6 +36,7 @@ export const MOCK_EXPIRED_GIFT_TOKEN = "mock-heartlink-expired";
 const mockGiftStore = new Map<string, Gift>([
   [MOCK_GIFT_TOKEN, { ...MOCK_GIFT }],
 ]);
+const openingGiftTokens = new Set<string>();
 
 function delay(ms = MOCK_DELAY_MS) {
   return new Promise(resolve => window.setTimeout(resolve, ms));
@@ -220,6 +223,15 @@ async function createGiftFromOwnedApi(input: CreateGiftInput): Promise<CreateGif
 }
 
 type GetGiftApiResult = { ok: true; gift: Gift };
+type GiftStatusEvent = "opened" | "accepted";
+type GiftStatusUpdateApiResult = {
+  ok: true;
+  token: string;
+  openedCount: number;
+  acceptedCount: number;
+  acceptedAt: string | null;
+  updatedAt: string;
+};
 
 function isGetGiftResult(payload: unknown): payload is GetGiftApiResult {
   if (typeof payload !== "object" || payload === null) return false;
@@ -265,6 +277,55 @@ async function getGiftFromOwnedApi(token: string): Promise<Gift> {
   return payload.gift;
 }
 
+function isGiftStatusUpdateResult(payload: unknown): payload is GiftStatusUpdateApiResult {
+  if (typeof payload !== "object" || payload === null) return false;
+
+  const value = payload as Partial<GiftStatusUpdateApiResult>;
+
+  return value.ok === true
+    && typeof value.token === "string"
+    && typeof value.openedCount === "number"
+    && typeof value.acceptedCount === "number"
+    && (typeof value.acceptedAt === "string" || value.acceptedAt === null)
+    && typeof value.updatedAt === "string";
+}
+
+async function updateGiftStatusFromOwnedApi(
+  token: string,
+  event: GiftStatusEvent,
+): Promise<GiftStatusUpdateApiResult> {
+  let response: Response;
+
+  try {
+    response = await fetch(OWNED_UPDATE_GIFT_STATUS_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, event }),
+    });
+  } catch {
+    throw createAppError("network-error", "Unable to update the gift status.");
+  }
+
+  let payload: unknown;
+
+  try {
+    payload = await response.json();
+  } catch {
+    throw createAppError("network-error", "Unable to update the gift status.");
+  }
+
+  if (!response.ok) {
+    const code = readAppErrorCode(payload) ?? "network-error";
+    throw createAppError(code, "Unable to update the gift status.");
+  }
+
+  if (!isGiftStatusUpdateResult(payload)) {
+    throw createAppError("network-error", "Unable to update the gift status.");
+  }
+
+  return payload;
+}
+
 function readStoredMockGifts(): Record<string, Gift> {
   if (typeof window === "undefined") return {};
 
@@ -292,6 +353,44 @@ function writeStoredMockGift(gift: Gift) {
   } catch {
     // Keep the in-memory mock flow usable even if browser storage is unavailable.
   }
+}
+
+function hasOpenedGiftInBrowser(token: string) {
+  if (typeof window === "undefined") return false;
+
+  try {
+    return window.localStorage.getItem(`${OPENED_GIFT_STORAGE_PREFIX}${token}`) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function rememberOpenedGiftInBrowser(token: string) {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.setItem(`${OPENED_GIFT_STORAGE_PREFIX}${token}`, "1");
+  } catch {
+    // Analytics deduplication remains best-effort when browser storage is unavailable.
+  }
+}
+
+function cacheGiftStatus(result: GiftStatusUpdateApiResult) {
+  const currentGift = mockGiftStore.get(result.token) ?? readStoredMockGift(result.token);
+
+  if (!currentGift) return;
+
+  const nextGift: Gift = {
+    ...currentGift,
+    status: result.acceptedAt ? "accepted" : currentGift.status,
+    openedCount: result.openedCount,
+    acceptedCount: result.acceptedCount,
+    acceptedAt: result.acceptedAt ?? undefined,
+    updatedAt: result.updatedAt,
+  };
+
+  mockGiftStore.set(result.token, nextGift);
+  writeStoredMockGift(nextGift);
 }
 
 function getStoredOrDefaultGift(token: string) {
@@ -458,6 +557,44 @@ export async function getGiftByToken(token: string): Promise<Gift> {
   return { ...gift };
 }
 
+export async function markGiftOpened(token: string): Promise<void> {
+  await delay();
+
+  if (hasOpenedGiftInBrowser(token) || openingGiftTokens.has(token)) return;
+
+  openingGiftTokens.add(token);
+
+  try {
+    if (USE_SUPABASE && token !== MOCK_GIFT_TOKEN) {
+      const result = await updateGiftStatusFromOwnedApi(token, "opened");
+      cacheGiftStatus(result);
+      rememberOpenedGiftInBrowser(token);
+      return;
+    }
+
+    const gift = getStoredOrDefaultGift(token);
+
+    if (!gift) {
+      throw createAppError("gift-not-found", "Gift token was not found in mock data.");
+    }
+
+    const openedAt = new Date().toISOString();
+    const openedGift: Gift = {
+      ...gift,
+      status: gift.acceptedAt ? "accepted" : "opened",
+      openedAt,
+      openedCount: (gift.openedCount ?? 0) + 1,
+      updatedAt: openedAt,
+    };
+
+    mockGiftStore.set(token, openedGift);
+    writeStoredMockGift(openedGift);
+    rememberOpenedGiftInBrowser(token);
+  } finally {
+    openingGiftTokens.delete(token);
+  }
+}
+
 export async function acceptGift(token: string): Promise<AcceptGiftResult> {
   await delay();
 
@@ -467,6 +604,25 @@ export async function acceptGift(token: string): Promise<AcceptGiftResult> {
       message: "Gift token is expired in mock data.",
     };
     throw error;
+  }
+
+  if (USE_SUPABASE && token !== MOCK_GIFT_TOKEN) {
+    const result = await updateGiftStatusFromOwnedApi(token, "accepted");
+    cacheGiftStatus(result);
+
+    const gift = mockGiftStore.get(token) ?? readStoredMockGift(token);
+
+    if (!result.acceptedAt) {
+      throw createAppError("network-error", "Unable to update the gift status.");
+    }
+
+    return {
+      token: result.token,
+      acceptedAt: result.acceptedAt,
+      acceptedCount: result.acceptedCount,
+      updatedAt: result.updatedAt,
+      acceptedText: gift?.copy.acceptedText ?? "",
+    };
   }
 
   const gift = getStoredOrDefaultGift(token);
@@ -494,6 +650,8 @@ export async function acceptGift(token: string): Promise<AcceptGiftResult> {
   return {
     token,
     acceptedAt,
+    acceptedCount: acceptedGift.acceptedCount ?? 1,
+    updatedAt: acceptedAt,
     acceptedText: gift.copy.acceptedText ?? "",
   };
 }

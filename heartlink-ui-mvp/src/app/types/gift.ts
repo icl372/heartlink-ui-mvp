@@ -92,5 +92,7 @@ export interface CreateGiftResult {
 export interface AcceptGiftResult {
   token: string;
   acceptedAt: string;
+  acceptedCount: number;
+  updatedAt: string;
   acceptedText: string;
 }

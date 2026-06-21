@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Heart, Star, Zap, Gift, MessageCircle } from "lucide-react";
 import {
   getThemeVisual,
   MOCK_GIFT_TOKEN,
 } from "../data";
-import { acceptGift, getGiftByToken } from "../services";
+import { acceptGift, getGiftByToken, markGiftOpened } from "../services";
 import type { AppError, Gift as GiftData, GiftOccasion, ReceiverState } from "../types";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -95,7 +95,10 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
   const [state, setState] = useState<ReceiverState>(RECEIVER_STATES.loading);
   const [gift, setGift] = useState<GiftData | null>(null);
   const [isOpening, setIsOpening] = useState(false);
+  const [isReceiving, setIsReceiving] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
+  const openedTokenRef = useRef<string | null>(null);
+  const acceptingTokenRef = useRef<string | null>(null);
   const receiverToken = token ?? MOCK_GIFT_TOKEN;
   const themeVisual = getThemeVisual(gift?.theme);
 
@@ -125,7 +128,16 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
         const loadedGift = await getGiftByToken(receiverToken);
         if (cancelled) return;
         setGift(loadedGift);
-        setState(RECEIVER_STATES.cover);
+        setState(loadedGift.acceptedAt ? RECEIVER_STATES.received : RECEIVER_STATES.cover);
+
+        const loadedToken = loadedGift.token ?? receiverToken;
+        if (openedTokenRef.current !== loadedToken) {
+          openedTokenRef.current = loadedToken;
+          void markGiftOpened(loadedToken).catch(() => {
+            // Open analytics is intentionally best-effort and must not block readable gifts.
+            openedTokenRef.current = null;
+          });
+        }
       } catch (error) {
         if (cancelled) return;
         setState(getReceiverErrorState(error));
@@ -143,20 +155,30 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
   };
 
   const handleReceive = async () => {
+    const giftToken = gift?.token ?? receiverToken;
+
+    if (isReceiving || acceptingTokenRef.current === giftToken) return;
+
+    acceptingTokenRef.current = giftToken;
+    setIsReceiving(true);
+
     try {
-      const result = await acceptGift(gift?.token ?? receiverToken);
+      const result = await acceptGift(giftToken);
       setGift(currentGift => currentGift
         ? {
           ...currentGift,
           status: "accepted",
           acceptedAt: result.acceptedAt,
-          acceptedCount: (currentGift.acceptedCount ?? 0) + 1,
-          updatedAt: result.acceptedAt,
+          acceptedCount: result.acceptedCount,
+          updatedAt: result.updatedAt,
         }
         : currentGift);
       setState(RECEIVER_STATES.received);
     } catch (error) {
       setState(getReceiverErrorState(error));
+    } finally {
+      acceptingTokenRef.current = null;
+      setIsReceiving(false);
     }
   };
 
@@ -332,8 +354,9 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
                 <div style={{ padding: "20px 28px 28px" }}>
                   <motion.button
                     onClick={handleReceive}
+                    disabled={isReceiving}
                     whileTap={{ scale: 0.97 }}
-                    style={{ width: "100%", padding: "16px 0", borderRadius: 99, background: themeVisual.primaryColor, color: "#FFFFFF", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 15, letterSpacing: 2, border: "none", cursor: "pointer", boxShadow: "0 6px 24px rgba(71,59,53,0.25)" }}>
+                    style={{ width: "100%", padding: "16px 0", borderRadius: 99, background: themeVisual.primaryColor, color: "#FFFFFF", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 15, letterSpacing: 2, border: "none", cursor: isReceiving ? "default" : "pointer", opacity: isReceiving ? 0.8 : 1, boxShadow: "0 6px 24px rgba(71,59,53,0.25)" }}>
                     {receiverButtonText}
                   </motion.button>
                   <p style={{ fontFamily: "'Noto Sans SC', sans-serif", color: "#C5BAB2", fontSize: 11, textAlign: "center", letterSpacing: 1, margin: "12px 0 0" }}>

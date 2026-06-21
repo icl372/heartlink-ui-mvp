@@ -3,4 +3,5 @@ export {
   createGift,
   generateCopy,
   getGiftByToken,
+  markGiftOpened,
 } from "./giftService";
