@@ -107,6 +107,6 @@ Suggested unknown-token URL: `https://heartlink-ui-mvp.vercel.app/to/not-existin
 
 - Build: passed.
 - Code changes in TODO-042: none.
-- Blocking release item: complete the documented Production mobile manual QA at 360/375/390/414/430px, including Supabase write-back and rate-limit behavior.
-- Non-blocking known risk: Vercel connectivity can vary on some domestic networks.
-- TODO-043: do not treat this QA as fully passed until the blocking manual checks are recorded. After they pass, the project can proceed to TODO-043 content preparation without changing the tested product flow.
+- Mobile core flow acceptance: passed.
+- Known deployment risk: access to `vercel.app` can be unstable on networks without a proxy in some regions. This does not block TODO-043 Xiaohongshu preheat content preparation, but it blocks a large-scale public release until the deployment/access strategy is reviewed.
+- TODO-043: can proceed without changing the tested product flow.
