@@ -25,6 +25,7 @@ const MOCK_AI_EMPTY_CONTENT_TRIGGER = "__mock_empty_content__";
 const MOCK_AI_UNAVAILABLE_TRIGGER = "__mock_ai_unavailable__";
 const OWNED_GENERATE_COPY_ENDPOINT = "/api/generate-copy";
 const OWNED_CREATE_GIFT_ENDPOINT = "/api/create-gift";
+const OWNED_GET_GIFT_ENDPOINT = "/api/get-gift";
 // This public flag only selects the owned API route. It is not a provider secret.
 const USE_REAL_AI = import.meta.env.VITE_USE_REAL_AI === "true";
 // This public flag only selects the owned gift-create route. It is not a database credential.
@@ -103,6 +104,8 @@ function readAppErrorCode(payload: unknown): AppError["code"] | undefined {
     "validation-empty",
     "network-error",
     "create-gift-failed",
+    "gift-not-found",
+    "gift-expired",
     "unknown",
   ];
 
@@ -214,6 +217,52 @@ async function createGiftFromOwnedApi(input: CreateGiftInput): Promise<CreateGif
   }
 
   return payload;
+}
+
+type GetGiftApiResult = { ok: true; gift: Gift };
+
+function isGetGiftResult(payload: unknown): payload is GetGiftApiResult {
+  if (typeof payload !== "object" || payload === null) return false;
+
+  const value = payload as Partial<GetGiftApiResult>;
+
+  return value.ok === true
+    && typeof value.gift === "object"
+    && value.gift !== null
+    && typeof value.gift.token === "string"
+    && typeof value.gift.recipientName === "string"
+    && typeof value.gift.originalMessage === "string"
+    && typeof value.gift.copy === "object"
+    && value.gift.copy !== null;
+}
+
+async function getGiftFromOwnedApi(token: string): Promise<Gift> {
+  let response: Response;
+
+  try {
+    response = await fetch(`${OWNED_GET_GIFT_ENDPOINT}?token=${encodeURIComponent(token)}`);
+  } catch {
+    throw createAppError("network-error", "Unable to load the gift.");
+  }
+
+  let payload: unknown;
+
+  try {
+    payload = await response.json();
+  } catch {
+    throw createAppError("network-error", "Unable to load the gift.");
+  }
+
+  if (!response.ok) {
+    const code = readAppErrorCode(payload) ?? "network-error";
+    throw createAppError(code, "Unable to load the gift.");
+  }
+
+  if (!isGetGiftResult(payload)) {
+    throw createAppError("network-error", "Unable to load the gift.");
+  }
+
+  return payload.gift;
 }
 
 function readStoredMockGifts(): Record<string, Gift> {
@@ -384,6 +433,16 @@ export async function getGiftByToken(token: string): Promise<Gift> {
       message: "Gift token is expired in mock data.",
     };
     throw error;
+  }
+
+  if (USE_SUPABASE && token !== MOCK_GIFT_TOKEN) {
+    const gift = await getGiftFromOwnedApi(token);
+
+    // Cache only a confirmed Supabase result; local data cannot override a real token.
+    mockGiftStore.set(token, gift);
+    writeStoredMockGift(gift);
+
+    return { ...gift };
   }
 
   const gift = getStoredOrDefaultGift(token);

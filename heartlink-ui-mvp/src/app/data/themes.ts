@@ -1,7 +1,7 @@
-import type { GiftTheme } from "../types";
+import type { GiftTheme, GiftThemeId } from "../types";
 
 export interface ThemeOption {
-  id: "gentle-letter" | "vintage-receipt" | "poetic-card" | "minimal-note";
+  id: GiftThemeId;
   label: GiftTheme;
   desc: string;
   sub: string;

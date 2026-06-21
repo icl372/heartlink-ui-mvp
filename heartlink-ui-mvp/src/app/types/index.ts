@@ -8,6 +8,7 @@ export type {
   GiftRecord,
   GiftStatus,
   GiftTheme,
+  GiftThemeId,
   GiftTone,
 } from "./gift";
 

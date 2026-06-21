@@ -12,7 +12,8 @@ export type ReceiverState =
   | "letter"
   | "received"
   | "not-found"
-  | "expired";
+  | "expired"
+  | "network-error";
 
 export type CopyLinkStatus = "idle" | "success" | "fail";
 

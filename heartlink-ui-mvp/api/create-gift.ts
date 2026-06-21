@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import type { CreateGiftInput, Gift, GiftCopy, GiftTheme } from "../src/app/types/gift";
+import type { CreateGiftInput, Gift, GiftCopy, GiftTheme, GiftThemeId } from "../src/app/types/gift";
 import type { AppErrorCode } from "../src/app/types/errors";
 
 declare const process: {
@@ -36,6 +36,12 @@ const SERVER_TOKEN_ALPHABET = "23456789abcdefghijkmnopqrstuvwxyz";
 const GIFT_OCCASIONS = new Set(["感谢", "祝福", "道歉", "鼓励", "小心意"]);
 const GIFT_TONES = new Set(["真诚", "温柔", "可爱", "克制", "正式", "诗意"]);
 const GIFT_THEMES = new Set<GiftTheme>(["温柔信纸", "复古收据", "诗意卡片", "简约便签"]);
+const GIFT_THEME_IDS: Record<GiftTheme, GiftThemeId> = {
+  温柔信纸: "gentle-letter",
+  复古收据: "vintage-receipt",
+  诗意卡片: "poetic-card",
+  简约便签: "minimal-note",
+};
 
 function sendError(
   response: VercelResponse,
@@ -140,7 +146,7 @@ function createGiftPayload(input: CreateGiftInput, token: string, now: string, i
     senderName: input.senderName,
     occasion: input.occasion,
     tone: input.tone,
-    theme: input.theme,
+    theme: GIFT_THEME_IDS[input.theme],
     originalMessage: input.originalMessage,
     amountText: input.amountText,
     copy: input.copy,

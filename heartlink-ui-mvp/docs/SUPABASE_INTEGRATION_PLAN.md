@@ -4,7 +4,7 @@
 
 HeartLink uses `giftService.ts` as the stable create, read, and accept boundary. TODO-037 adds an owned Vercel Function at `/api/create-gift`: when the public, non-secret `VITE_USE_SUPABASE` flag is enabled, `giftService.createGift()` calls that endpoint and the Function writes a gift to Supabase using server-only credentials.
 
-The same-browser in-memory and LocalStorage mock store remains in place after a successful create so preview and new-tab QA continue to work until TODO-038 changes the receiver read path. This task does not install a browser Supabase client or change receiver reads.
+The same-browser in-memory and LocalStorage mock store remains in place after a successful create so preview and new-tab QA continue to work. TODO-038 adds the owned `/api/get-gift?token=...` read path: real tokens are read from Supabase first, while explicit mock tokens remain local QA branches.
 
 ## Goals
 
@@ -39,7 +39,7 @@ Use one table named `gifts`. The current `GiftRecord` type is the field mapping 
 | `quote` | yes | Generated or edited quote. |
 | `button_text` | yes | Product-safe button copy. |
 | `accepted_text` | nullable | Short completion detail. |
-| `theme` | yes | Existing persisted `GiftTheme` value. |
+| `theme` | yes | Stable `GiftThemeId` for new writes; legacy Chinese `GiftTheme` values remain readable. |
 | `opened_count` | yes | Non-negative integer, default `0`. |
 | `accepted_count` | yes | Non-negative integer, default `0`. |
 | `created_at` | yes | Database default timestamp. |
@@ -149,6 +149,14 @@ The current `ReceiverState` has no dedicated network-error variant. TODO-038 and
 - Requires: the TODO-037 table plus server-side environment configuration.
 - Acceptance: a different browser/device can load the same `/to/:token`, with the same title, copy, theme, and dates; unknown/deleted tokens show not-found; expired tokens show expired.
 - Manual verification: test a new browser profile or device, not only a new tab in the creator browser.
+
+### TODO-038 Implementation Record
+
+1. `api/get-gift.ts` accepts GET only and performs a single token-filtered `public.gifts` query through server-only `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
+2. The endpoint returns `{ ok: true, gift }` for a valid record; deleted or missing records map to `gift-not-found`, and expired records map to `gift-expired`. It performs no open or accept write-back.
+3. `giftService.getGiftByToken()` uses the owned endpoint for real tokens when `VITE_USE_SUPABASE=true`, then caches only confirmed results in the existing same-browser store. Explicit mock and expired tokens retain their QA behavior.
+4. New writes normalize `theme` to a stable id. Reads accept both stable ids and older Chinese values, mapping them back to the existing frontend `GiftTheme` values for the current theme renderer.
+5. Receiver network failures use a small retry state instead of being mislabeled as not-found. TODO-039 remains responsible for `opened_count`, `accepted_at`, and `accepted_count` writes.
 
 ## TODO-039 Boundary: Persist Receiver State
 

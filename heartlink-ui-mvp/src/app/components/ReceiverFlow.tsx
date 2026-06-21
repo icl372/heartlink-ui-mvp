@@ -23,6 +23,7 @@ const RECEIVER_STATES = {
   received: "received",
   notFound: "not-found",
   expired: "expired",
+  networkError: "network-error",
 } as const satisfies Record<string, ReceiverState>;
 
 function getAppErrorCode(error: unknown) {
@@ -32,9 +33,10 @@ function getAppErrorCode(error: unknown) {
 }
 
 function getReceiverErrorState(error: unknown): ReceiverState {
-  return getAppErrorCode(error) === "gift-expired"
-    ? RECEIVER_STATES.expired
-    : RECEIVER_STATES.notFound;
+  const code = getAppErrorCode(error);
+
+  if (code === "network-error") return RECEIVER_STATES.networkError;
+  return code === "gift-expired" ? RECEIVER_STATES.expired : RECEIVER_STATES.notFound;
 }
 
 function getCreatedDateLabel(createdAt: string | undefined, scene: Scene) {
@@ -93,6 +95,7 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
   const [state, setState] = useState<ReceiverState>(RECEIVER_STATES.loading);
   const [gift, setGift] = useState<GiftData | null>(null);
   const [isOpening, setIsOpening] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const receiverToken = token ?? MOCK_GIFT_TOKEN;
   const themeVisual = getThemeVisual(gift?.theme);
 
@@ -132,7 +135,7 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
     void loadGift();
 
     return () => { cancelled = true; };
-  }, [receiverToken]);
+  }, [receiverToken, loadAttempt]);
 
   const handleOpen = () => {
     setIsOpening(true);
@@ -167,6 +170,10 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
     } catch {
       setState(RECEIVER_STATES.notFound);
     }
+  };
+
+  const handleRetryLoad = () => {
+    setLoadAttempt(currentAttempt => currentAttempt + 1);
   };
 
   return (
@@ -446,6 +453,33 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
           )}
 
           {/* ── Expired ───────────────────────────────────────────────────── */}
+          {state === RECEIVER_STATES.networkError && (
+            <motion.div key="network-error"
+              initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", padding: "0 28px" }}>
+              <div style={{ width: "100%", borderRadius: 28, background: "#FFFFFF", boxShadow: "0 12px 60px rgba(63,52,47,0.09)", padding: "52px 32px 44px", display: "flex", flexDirection: "column", alignItems: "center", gap: 0 }}>
+                <div style={{ width: 72, height: 72, borderRadius: "50%", background: "#F7F2EA", border: "1px solid #EAE2D8", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#C5BAB2" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12a7 7 0 0 1 13-3M19 12a7 7 0 0 1-13 3" />
+                    <path d="M18 5v4h-4M6 19v-4h4" />
+                  </svg>
+                </div>
+                <p style={{ fontFamily: "'Lora', serif", color: "#C9A66B", fontSize: 10, letterSpacing: 4, textTransform: "uppercase", margin: "0 0 10px", textAlign: "center" }}>Connection Error</p>
+                <h2 style={{ fontFamily: "'Noto Serif SC', serif", color: "#3F342F", fontSize: 21, letterSpacing: 3, textAlign: "center", margin: "0 0 8px", lineHeight: 1.5 }}>
+                  暂时无法打开这份心意
+                </h2>
+                <div style={{ width: 24, height: 1, background: "#C9A66B", margin: "8px auto 16px", opacity: 0.5 }} />
+                <p style={{ fontFamily: "'Noto Serif SC', serif", color: "#9B8E86", fontSize: 14, lineHeight: 2, textAlign: "center", letterSpacing: 0.5, margin: "0 0 36px" }}>
+                  网络连接似乎不稳定<br />请稍后再试
+                </p>
+                <button onClick={handleRetryLoad}
+                  style={{ width: "100%", padding: "14px 0", borderRadius: 99, background: "#473B35", color: "#FFFFFF", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 14, letterSpacing: 2, border: "none", cursor: "pointer", boxShadow: "0 4px 16px rgba(71,59,53,0.2)" }}>
+                  重新尝试
+                </button>
+              </div>
+            </motion.div>
+          )}
+
           {state === RECEIVER_STATES.expired && (
             <motion.div key="expired"
               initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}

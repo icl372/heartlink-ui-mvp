@@ -56,7 +56,7 @@ src/app/types/gift.ts -> GiftRecord
 | `copy.buttonText` | `GiftCopy.buttonText` | `button_text` | `GiftRecord.button_text` | service 层按钮文案。 |
 | `copy.acceptedText` | `GiftCopy.acceptedText` | `accepted_text` | `GiftRecord.accepted_text` | 接收完成态文案，可为空。 |
 | `selectedStyle` | `CreatorFlow` state | `theme` | `GiftRecord.theme` | 当前选中风格。本文档不处理主题视觉映射问题。 |
-| `theme` | `CreateGiftInput.theme` / `Gift.theme` | `theme` | `GiftRecord.theme` | service 层风格字段。 |
+| `theme` | `CreateGiftInput.theme` / `Gift.theme` | `theme` | `GiftRecord.theme` | 新写入使用 stable theme id；读取兼容旧中文值，并映射回前端现有 `GiftTheme`。 |
 | `openedAt` | `Gift.openedAt` | 暂无独立字段 | 暂无独立字段 | `ARCHITECTURE.md` 初稿记录的是 `opened_count`，暂不记录打开时间。 |
 | `acceptedAt` | `Gift.acceptedAt` / `AcceptGiftResult.acceptedAt` | `accepted_at` | `GiftRecord.accepted_at` | 接收时间，可为空。 |
 | `expiresAt` | `Gift.expiresAt` | `expires_at` | `GiftRecord.expires_at` | 过期时间，可为空。 |
