@@ -502,6 +502,10 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
                 <textarea value={message} onChange={e => setMessage(e.target.value)}
                   placeholder="例如：祝你天天开心，顺顺利利。谢谢你一直以来的照顾。"
                   rows={5} style={{ ...inputStyle, resize: "none", lineHeight: 1.9 }} />
+                <p style={{ fontFamily: "'Noto Sans SC', sans-serif", color: "#9B8E86", fontSize: 11, lineHeight: 1.7, letterSpacing: 0.2, margin: "2px 0 0" }}>
+                  请不要填写身份证号、手机号、银行卡号、住址、密码、医疗信息等敏感信息。<br />
+                  生成内容会用于创建并分享这份心意链接，请只分享给你信任的人。
+                </p>
               </FormField>
 
               {scene === "小心意" && (
