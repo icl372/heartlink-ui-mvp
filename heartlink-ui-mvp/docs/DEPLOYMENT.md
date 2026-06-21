@@ -12,7 +12,7 @@ The current project is a frontend MVP with mock services.
 
 - `npm run build` produces static assets in `dist/`.
 - Gift data currently uses in-memory and LocalStorage mock preview storage.
-- Generated share links use `VITE_PUBLIC_SITE_URL` when configured, then fall back to `window.location.origin` for local development.
+- Generated share links use `VITE_APP_BASE_URL`, `VITE_SITE_URL`, or `VITE_PUBLIC_SITE_URL` when configured, then use `https://www.xygift.cn` outside local development. Local development falls back to `window.location.origin`.
 - A deployed static site cannot turn LocalStorage mock data into a cross-device production gift link.
 
 Do not describe the current static deployment as a production data service. Real cross-device gift links require a later server-side data source and service implementation.
@@ -76,7 +76,7 @@ Provider-specific rewrites or redirect files must be added only in a separate ap
 
 ## 6. Environment Variable and Secret Boundary
 
-`VITE_PUBLIC_SITE_URL` is a public browser-visible configuration value for the canonical share-link origin. Set it to the Production URL, without a trailing slash, so links created from Preview or long Vercel deployment URLs still point to the public site.
+`VITE_APP_BASE_URL` is the preferred public browser-visible configuration value for the canonical share-link origin. Set it to `https://www.xygift.cn`, without a trailing slash, so links created from Preview or Vercel deployment URLs still point to the public site. `VITE_SITE_URL` and the legacy `VITE_PUBLIC_SITE_URL` are supported as lower-priority aliases. `PUBLIC_SITE_URL` and `NEXT_PUBLIC_SITE_URL` are not exposed by Vite and must not be relied on by browser code.
 
 When real services are added later:
 
@@ -84,7 +84,7 @@ When real services are added later:
 - Never prefix a secret with `VITE_`. Vite exposes `VITE_` variables in the browser bundle.
 - Store provider secrets only in a server-side function or host secret manager.
 - A future public configuration value must be reviewed before adding it. Do not hard-code an unconfirmed production domain.
-- When `VITE_PUBLIC_SITE_URL` is absent, `createGiftUrl()` falls back to `window.location.origin` for local preview.
+- An absent or stale `.vercel.app` public URL falls back to `https://www.xygift.cn` outside local development. Local preview continues to use `window.location.origin`.
 - Production AI generation requires server-only `AI_RATE_LIMIT_ENABLED=true` and a non-empty `RATE_LIMIT_SALT`, plus the optional numeric limit overrides documented in `.env.example`. Run `docs/AI_RATE_LIMIT_SQL.md` in Supabase before enabling this path. These values must never use a `VITE_` prefix.
 
 ## 7. Future Deployment Smoke Test

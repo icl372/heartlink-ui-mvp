@@ -11,6 +11,7 @@ export {
 
 export {
   DEFAULT_LOCAL_APP_ORIGIN,
+  DEFAULT_PRODUCTION_SITE_ORIGIN,
   GIFT_ROUTE_PREFIX,
   createGiftUrl,
   getGiftTokenFromHash,

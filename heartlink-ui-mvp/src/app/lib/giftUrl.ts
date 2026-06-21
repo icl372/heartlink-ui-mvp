@@ -2,12 +2,47 @@ import { encodeGiftToken, isValidGiftToken } from "./token";
 
 export const GIFT_ROUTE_PREFIX = "/to";
 export const DEFAULT_LOCAL_APP_ORIGIN = "http://localhost:5173";
+export const DEFAULT_PRODUCTION_SITE_ORIGIN = "https://www.xygift.cn";
 const GIFT_TOKEN_QUERY_KEYS = ["token", "gift"] as const;
 
-export function getPublicSiteOrigin() {
-  const configuredOrigin = import.meta.env.VITE_PUBLIC_SITE_URL?.trim();
+function normalizeOrigin(value: string | undefined) {
+  const origin = value?.trim().replace(/\/+$/, "");
+  return origin || undefined;
+}
 
-  return configuredOrigin ? configuredOrigin.replace(/\/+$/, "") : undefined;
+function isLocalDevelopmentOrigin(origin: string) {
+  try {
+    const hostname = new URL(origin).hostname;
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+  } catch {
+    return false;
+  }
+}
+
+function isVercelDeploymentOrigin(origin: string) {
+  try {
+    return new URL(origin).hostname.endsWith(".vercel.app");
+  } catch {
+    return false;
+  }
+}
+
+export function getPublicSiteOrigin() {
+  // Vite only exposes VITE_* variables to browser code. PUBLIC_SITE_URL and
+  // NEXT_PUBLIC_SITE_URL are not valid runtime configuration sources here.
+  const configuredOrigin = [
+    import.meta.env.VITE_APP_BASE_URL,
+    import.meta.env.VITE_SITE_URL,
+    import.meta.env.VITE_PUBLIC_SITE_URL,
+  ]
+    .map(normalizeOrigin)
+    .find(origin => origin && !isVercelDeploymentOrigin(origin));
+
+  if (configuredOrigin) return configuredOrigin;
+
+  return isLocalDevelopmentOrigin(getLocalAppOrigin())
+    ? undefined
+    : DEFAULT_PRODUCTION_SITE_ORIGIN;
 }
 
 export function getLocalAppOrigin() {

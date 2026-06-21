@@ -12,7 +12,7 @@ It does not add features or change product behavior.
 
 ## 2. Test Environment
 
-- Production URL: `https://heartlink-ui-mvp.vercel.app`
+- Production URL: `https://www.xygift.cn`
 - Required mobile widths: `360`, `375`, `390`, `414`, and `430` CSS pixels.
 - Build verification: `npm run build` passed during TODO-042.
 - Earlier baseline: TODO-025 recorded a non-blocking 390px local layout check before the later Supabase, rate-limit, and privacy-hint work.
@@ -44,7 +44,7 @@ Production manual checks:
    - Share the resulting link only with trusted people.
 4. Verify AI loading is visible, then verify generated copy, theme selection, and preview.
 5. Verify AI failure, service-unavailable, and rate-limited responses show the existing friendly failure surface rather than a blank page.
-6. Create the link, copy it, and confirm the result uses `https://heartlink-ui-mvp.vercel.app/to/:token`, not a long Vercel deployment URL.
+6. Create the link, copy it, and confirm the result uses `https://www.xygift.cn/to/:token`, not a Vercel deployment URL.
 7. Confirm the copy toast remains visible and centered on mobile.
 
 Status: pending Production mobile manual verification. The source/build review found no TODO-042 code change.
@@ -94,11 +94,11 @@ Status: source-level behavior was verified in TODO-040 with mocked server tests;
 | Supabase read/status network failure | Existing receiver retry/network-error state | Pending fault-injection test |
 | Clipboard failure | Existing copy-failure feedback | Pending browser-specific manual check |
 
-Suggested unknown-token URL: `https://heartlink-ui-mvp.vercel.app/to/not-existing-token-123`.
+Suggested unknown-token URL: `https://www.xygift.cn/to/not-existing-token-123`.
 
 ## 9. Known Risks
 
-1. Some mainland China networks may access `vercel.app` unreliably; all Production QA requires a network that can reach Vercel.
+1. Some mainland China networks may access `vercel.app` unreliably; public sharing should use `https://www.xygift.cn` rather than a Vercel deployment URL.
 2. Vercel Authentication must remain disabled for recipients using incognito or logged-out browsers.
 3. Before wider public release, evaluate a custom domain or hosting approach better suited to the target network.
 4. Automated mobile browser QA was unavailable in this execution environment, so the manual checks in this document are a release gate rather than optional follow-up.
@@ -108,5 +108,5 @@ Suggested unknown-token URL: `https://heartlink-ui-mvp.vercel.app/to/not-existin
 - Build: passed.
 - Code changes in TODO-042: none.
 - Mobile core flow acceptance: passed.
-- Known deployment risk: access to `vercel.app` can be unstable on networks without a proxy in some regions. This does not block TODO-043 Xiaohongshu preheat content preparation, but it blocks a large-scale public release until the deployment/access strategy is reviewed.
+- Known deployment risk: access to `vercel.app` can be unstable on networks without a proxy in some regions. Public sharing now uses `https://www.xygift.cn`; deployment/access strategy should still be reviewed before a large-scale public release.
 - TODO-043: can proceed without changing the tested product flow.
