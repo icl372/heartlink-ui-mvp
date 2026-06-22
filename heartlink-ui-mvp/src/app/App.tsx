@@ -1,3 +1,4 @@
+import { Analytics } from '@vercel/analytics/react'
 import { useState } from "react";
 import { CreatorFlow } from "./components/CreatorFlow";
 import { ReceiverFlow } from "./components/ReceiverFlow";
@@ -30,6 +31,7 @@ export default function App() {
   };
 
   return (
+      <>
     <div className="size-full">
       {mode === "creator" ? (
         <CreatorFlow onViewReceiver={showReceiver} />
@@ -37,5 +39,8 @@ export default function App() {
         <ReceiverFlow token={receiverToken} onBack={showCreator} />
       )}
     </div>
+
+    <Analytics />
+  </>
   );
 }
