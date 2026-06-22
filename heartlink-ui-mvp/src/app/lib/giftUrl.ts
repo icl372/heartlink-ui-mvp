@@ -1,6 +1,7 @@
 import { encodeGiftToken, isValidGiftToken } from "./token";
 
 export const GIFT_ROUTE_PREFIX = "/to";
+export const GIFT_PREVIEW_QUERY_KEY = "preview";
 export const DEFAULT_LOCAL_APP_ORIGIN = "http://localhost:5173";
 export const DEFAULT_PRODUCTION_SITE_ORIGIN = "https://www.xygift.cn";
 const GIFT_TOKEN_QUERY_KEYS = ["token", "gift"] as const;
@@ -60,6 +61,16 @@ export function createGiftUrl(token: string, origin = getPublicSiteOrigin() ?? g
     : encodeURIComponent(token.trim());
 
   return `${safeOrigin}${GIFT_ROUTE_PREFIX}/${tokenSegment}`;
+}
+
+export function createGiftPreviewUrl(token: string, origin = getPublicSiteOrigin() ?? getLocalAppOrigin()) {
+  return `${createGiftUrl(token, origin)}?${GIFT_PREVIEW_QUERY_KEY}=1`;
+}
+
+export function isGiftPreviewMode(locationLike = typeof window !== "undefined" ? window.location : undefined) {
+  if (!locationLike) return false;
+
+  return new URLSearchParams(locationLike.search).get(GIFT_PREVIEW_QUERY_KEY) === "1";
 }
 
 function decodeTokenSegment(segment: string) {

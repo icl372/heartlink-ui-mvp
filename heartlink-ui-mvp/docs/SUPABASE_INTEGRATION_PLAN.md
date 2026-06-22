@@ -174,6 +174,13 @@ The current `ReceiverState` has no dedicated network-error variant. TODO-038 and
 4. `ReceiverFlow` enters the received state directly when the Supabase read returns `accepted_at`, so reloads and other browsers keep the accepted state. Open analytics is best-effort and never blocks a readable gift; accept failures remain on the existing error boundary and do not falsely show success.
 5. TODO-040 remains AI cost protection. This work does not change AI, token/link generation, theme rendering, login, or payment behavior.
 
+### Creator Preview Boundary
+
+1. Creator preview uses `/to/:token?preview=1`; copied share links remain `/to/:token` without the preview parameter.
+2. Preview mode always begins at the cover state, even if the stored gift already has `accepted_at`.
+3. Preview mode never records `opened_count`, `accepted_at`, or `accepted_count`, and it does not persist a local accepted state. The received screen is only a page-local visual preview.
+4. A real receiver link keeps the TODO-039 read and write-back behavior unchanged.
+
 ## Risks and Open Questions
 
 1. Anonymous create and write endpoints need abuse controls before broad release. Rate limiting and quotas are separate future work.

@@ -536,6 +536,7 @@ Current implemented boundaries:
 8. `api/get-gift.ts` is an owned Vercel Function that reads one gift by token from Supabase. It uses the same server-only variables and performs no receiver state write-back.
 9. `api/update-gift-status.ts` is an owned Vercel Function for scoped receiver `opened` and idempotent `accepted` updates. It reads the same server-only variables and never exposes database credentials to the browser.
 10. `api/generate-copy.ts` checks a server-side Supabase-backed rate limit before any DeepSeek request. It records only a salted client-key hash and minimal usage metadata; unavailable limit storage fails closed rather than allowing unbounded provider calls.
+11. Creator preview uses `/to/:token?preview=1`. `ReceiverFlow` treats this as page-local presentation only and skips all opened/accepted persistence; ordinary `/to/:token` links retain the real receiver write-back behavior.
 
 Current mock-only implementation:
 

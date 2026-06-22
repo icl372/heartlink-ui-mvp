@@ -2,6 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Heart, Star, Zap, Gift, MessageCircle } from "lucide-react";
 import {
+  isGiftPreviewMode,
+} from "../lib";
+import {
   getThemeVisual,
   MOCK_GIFT_TOKEN,
 } from "../data";
@@ -100,6 +103,7 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
   const openedTokenRef = useRef<string | null>(null);
   const acceptingTokenRef = useRef<string | null>(null);
   const receiverToken = token ?? MOCK_GIFT_TOKEN;
+  const isPreviewMode = isGiftPreviewMode();
   const themeVisual = getThemeVisual(gift?.theme);
 
   const scene = (gift?.occasion ?? "感谢") as Scene;
@@ -128,10 +132,12 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
         const loadedGift = await getGiftByToken(receiverToken);
         if (cancelled) return;
         setGift(loadedGift);
-        setState(loadedGift.acceptedAt ? RECEIVER_STATES.received : RECEIVER_STATES.cover);
+        setState(isPreviewMode || !loadedGift.acceptedAt
+          ? RECEIVER_STATES.cover
+          : RECEIVER_STATES.received);
 
         const loadedToken = loadedGift.token ?? receiverToken;
-        if (openedTokenRef.current !== loadedToken) {
+        if (!isPreviewMode && openedTokenRef.current !== loadedToken) {
           openedTokenRef.current = loadedToken;
           void markGiftOpened(loadedToken).catch(() => {
             // Open analytics is intentionally best-effort and must not block readable gifts.
@@ -147,7 +153,7 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
     void loadGift();
 
     return () => { cancelled = true; };
-  }, [receiverToken, loadAttempt]);
+  }, [receiverToken, loadAttempt, isPreviewMode]);
 
   const handleOpen = () => {
     setIsOpening(true);
@@ -155,6 +161,11 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
   };
 
   const handleReceive = async () => {
+    if (isPreviewMode) {
+      setState(RECEIVER_STATES.received);
+      return;
+    }
+
     const giftToken = gift?.token ?? receiverToken;
 
     if (isReceiving || acceptingTokenRef.current === giftToken) return;

@@ -14,7 +14,7 @@ import {
   THEME_OPTIONS,
   TONE_OPTIONS as CENTRAL_TONE_OPTIONS,
 } from "../data";
-import { createGiftUrl } from "../lib";
+import { createGiftPreviewUrl, createGiftUrl } from "../lib";
 import { createGift, generateCopy } from "../services";
 import { getAiErrorUiStatus, getAppErrorCode } from "../types";
 import type {
@@ -205,11 +205,13 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
   const [generatedAcceptedText, setGeneratedAcceptedText] = useState(MOCK_GENERATED_COPY.acceptedText);
   const [editingField, setEditingField] = useState<EditingField>(null);
   const [generatedLink, setGeneratedLink] = useState("");
+  const [generatedToken, setGeneratedToken] = useState("");
   const [createGiftStatus, setCreateGiftStatus] = useState<CreateGiftStatus>("idle");
   const generateRequestIdRef = useRef(0);
 
   const fallbackLink = createGiftUrl(MOCK_PREVIEW_TOKEN);
   const successLink = generatedLink || fallbackLink;
+  const previewLink = createGiftPreviewUrl(generatedToken || MOCK_PREVIEW_TOKEN);
   const previewTheme = getThemeVisual(selectedStyle);
 
   // Go back, clamped to 0
@@ -302,6 +304,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
     try {
       const result = await createGift(buildCreateGiftInput());
       setGeneratedLink(result.giftUrl);
+      setGeneratedToken(result.token);
       setCreateGiftStatus("idle");
       setStep(CREATOR_STEPS.success);
     } catch (error) {
@@ -317,7 +320,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
 
   const handleOpenPreview = () => {
     if (typeof window !== "undefined") {
-      window.open(successLink, "_blank", "noopener,noreferrer");
+      window.open(previewLink, "_blank", "noopener,noreferrer");
     }
   };
 
@@ -898,7 +901,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
                   style={{ width: "100%", padding: "14px 0", borderRadius: 99, background: "transparent", color: "#3F342F", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 14, letterSpacing: 2, border: "1.5px solid #EAE2D8", cursor: "pointer" }}>
                   打开预览效果
                 </button>
-                <button onClick={() => { setStep(CREATOR_STEPS.home); setAiStatus("idle"); setGeneratedLink(""); }}
+                <button onClick={() => { setStep(CREATOR_STEPS.home); setAiStatus("idle"); setGeneratedLink(""); setGeneratedToken(""); }}
                   style={{ background: "none", border: "none", cursor: "pointer", color: "#9B8E86", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 13, letterSpacing: 1, textAlign: "center", borderBottom: "1px solid #EAE2D8", paddingBottom: 1, margin: "0 auto" }}>
                   再创建一份
                 </button>
