@@ -110,6 +110,20 @@ const BANNED_COPY_TERMS = [
   "感恩常在",
   "风雨同舟",
 ];
+const GENERIC_QUOTE_TERMS = [
+  "爱",
+  "陪伴",
+  "感恩",
+  "感谢",
+  "珍惜",
+  "温暖",
+  "细节",
+  "心意",
+  "时光",
+  "岁月",
+  "美好",
+  "幸福",
+];
 
 function sendError(
   response: VercelResponse,
@@ -437,6 +451,9 @@ function buildGenerationMessages(
         "The body must naturally mention at least one concrete detail from extracted.detail. Avoid generic thanks or empty blessing templates.",
         "The opening sentence of body should also be grounded in concrete information from extracted.event or extracted.detail. Do not start with broad scene-setting such as seeing someone busy, always being there, or generic family/friendship descriptions.",
         "Avoid a stitched feeling where the first sentence is generic and only the ending mentions a concrete detail.",
+        "The quote field must include at least one concrete noun, place, object, action, nickname, or specific phrase from extracted.event or extracted.detail.",
+        "The quote field must not be a generic emotional summary made only from words like love, companionship, gratitude, cherishing, warmth, details, time, or happiness.",
+        "The quote field should feel specific to this person and this exact moment, not reusable for anyone. Keep quote within 20 Chinese characters and do not write it as a second body paragraph.",
         `Do not use these banned phrases or highly similar expressions: ${bannedTerms.join("、")}.`,
         "Return only one JSON object with these non-empty string keys:",
         "coverText, title, body, quote, buttonText, signoff, acceptedText.",
@@ -595,6 +612,56 @@ function getMatchedBannedTerms(copy: GenerateCopyResult) {
   return BANNED_COPY_TERMS.filter(term => text.includes(term));
 }
 
+function getConcreteQuoteKeywords(extractedContext: ExtractedGiftContext) {
+  const sourceText = `${extractedContext.event}\n${extractedContext.detail}`;
+  const matches = sourceText.match(/[\p{Script=Han}A-Za-z0-9]{2,}/gu) ?? [];
+  const keywords = new Set<string>();
+
+  for (const match of matches) {
+    const normalizedMatch = match.trim();
+    if (!normalizedMatch || GENERIC_QUOTE_TERMS.includes(normalizedMatch)) continue;
+
+    if (Array.from(normalizedMatch).length <= 4) {
+      keywords.add(normalizedMatch);
+      continue;
+    }
+
+    keywords.add(normalizedMatch);
+    for (let length = 2; length <= 4; length += 1) {
+      for (let index = 0; index <= normalizedMatch.length - length; index += 1) {
+        const keyword = normalizedMatch.slice(index, index + length);
+        if (!GENERIC_QUOTE_TERMS.includes(keyword)) {
+          keywords.add(keyword);
+        }
+      }
+    }
+  }
+
+  return [...keywords];
+}
+
+function isQuoteSpecificEnough(quote: string, extractedContext: ExtractedGiftContext) {
+  const normalizedQuote = quote.trim();
+  if (!normalizedQuote) return false;
+
+  const nonGenericText = GENERIC_QUOTE_TERMS.reduce(
+    (text, term) => text.replaceAll(term, ""),
+    normalizedQuote,
+  ).replace(/[，。！？!?、\s]/g, "");
+
+  if (Array.from(nonGenericText).length < 2) return false;
+
+  return getConcreteQuoteKeywords(extractedContext).some(keyword => normalizedQuote.includes(keyword));
+}
+
+function buildFallbackQuote(extractedContext: ExtractedGiftContext) {
+  const keyword = getConcreteQuoteKeywords(extractedContext)[0];
+  const fallbackDetail = keyword || extractedContext.detail.split(/[\n，。！？!?、]/)[0]?.trim() || "这件小事";
+  const shortDetail = Array.from(fallbackDetail).slice(0, 10).join("");
+
+  return `关于${shortDetail},我一直记得`;
+}
+
 function removeBannedSentences(value: string) {
   const sentencePattern = /[^。！？!?；;\n]+[。！？!?；;]?|\n+/g;
   const parts = value.match(sentencePattern) ?? [value];
@@ -697,12 +764,21 @@ async function generateCopyWithRetries(
 
     latestCopy = generatedCopy;
 
-    if (getMatchedBannedTerms(generatedCopy).length === 0) {
+    if (
+      getMatchedBannedTerms(generatedCopy).length === 0
+      && isQuoteSpecificEnough(generatedCopy.quote, extractedContext)
+    ) {
       return generatedCopy;
     }
   }
 
-  return latestCopy ? removeBannedCopySentences(latestCopy) : undefined;
+  if (!latestCopy) return undefined;
+
+  const cleanedCopy = removeBannedCopySentences(latestCopy);
+
+  return isQuoteSpecificEnough(cleanedCopy.quote, extractedContext)
+    ? cleanedCopy
+    : { ...cleanedCopy, quote: buildFallbackQuote(extractedContext) };
 }
 
 export default async function handler(request: VercelRequest, response: VercelResponse) {
