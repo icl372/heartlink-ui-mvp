@@ -122,6 +122,7 @@ export function ReceiverFlow({ onBack, onCreateGift, token }: ReceiverFlowProps)
   const openedTokenRef = useRef<string | null>(null);
   const acceptingTokenRef = useRef<string | null>(null);
   const previousStateRef = useRef<ReceiverState>(state);
+  const letterContainerRef = useRef<HTMLDivElement | null>(null);
   const receiverToken = token ?? MOCK_GIFT_TOKEN;
   const isPreviewMode = isGiftPreviewMode();
   const themeVisual = getThemeVisual(gift?.theme);
@@ -201,6 +202,14 @@ export function ReceiverFlow({ onBack, onCreateGift, token }: ReceiverFlowProps)
       setRevealedLetterStep(state === RECEIVER_STATES.letter ? 1 : 0);
       previousStateRef.current = state;
     }
+  }, [state]);
+
+  useEffect(() => {
+    if (state !== RECEIVER_STATES.letter) return;
+
+    requestAnimationFrame(() => {
+      letterContainerRef.current?.scrollIntoView({ block: "start" });
+    });
   }, [state]);
 
   const handleOpen = () => {
@@ -359,10 +368,11 @@ export function ReceiverFlow({ onBack, onCreateGift, token }: ReceiverFlowProps)
           {/* ── Letter ───────────────────────────────────────────────────── */}
           {state === RECEIVER_STATES.letter && (
             <motion.div key="letter"
+              ref={letterContainerRef}
               onClick={advanceLetterReveal}
               initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
               transition={{ duration: 0.5, ease: "easeOut" }}
-              style={{ padding: "72px 24px 48px", display: "flex", flexDirection: "column", gap: 0, cursor: revealedLetterStep < totalLetterRevealSteps ? "pointer" : "default" }}>
+              style={{ minHeight: "100vh", boxSizing: "border-box", padding: revealedLetterStep <= 1 ? "28px 20px" : "32px 20px 48px", display: "flex", flexDirection: "column", justifyContent: revealedLetterStep <= 1 ? "center" : "flex-start", gap: 0, cursor: revealedLetterStep < totalLetterRevealSteps ? "pointer" : "default" }}>
 
               <div style={{ borderRadius: themeVisual.cardRadius, background: themeVisual.surfaceBackground, border: `1px solid ${themeVisual.borderColor}`, boxShadow: "0 12px 60px rgba(63,52,47,0.09)", overflow: "hidden" }}>
 
