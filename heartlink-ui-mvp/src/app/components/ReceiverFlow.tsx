@@ -63,6 +63,23 @@ function formatAcceptedDate(acceptedAt: string | null | undefined) {
   }).format(date);
 }
 
+function splitLetterBody(body: string | undefined) {
+  const normalizedBody = body?.trim() ?? "";
+  if (!normalizedBody) return [""];
+
+  const paragraphs = normalizedBody.split(/\n{2,}/).map(part => part.trim()).filter(Boolean);
+  if (paragraphs.length > 1) return paragraphs;
+
+  const sentences = normalizedBody.match(/[^。！？!?]+[。！？!?]?/g)?.map(part => part.trim()).filter(Boolean);
+  if (!sentences || sentences.length <= 1) return [normalizedBody];
+
+  const midpoint = Math.ceil(sentences.length / 2);
+  return [
+    sentences.slice(0, midpoint).join(""),
+    sentences.slice(midpoint).join(""),
+  ].filter(Boolean);
+}
+
 // ─── Scene icons (for decorative use) ────────────────────────────────────────
 function SceneIcon({ scene, size = 28, color = "#FFFFFF" }: { scene: Scene; size?: number; color?: string }) {
   const props = { size, color, strokeWidth: 1.5 };
@@ -101,17 +118,23 @@ export function ReceiverFlow({ onBack, onCreateGift, token }: ReceiverFlowProps)
   const [isOpening, setIsOpening] = useState(false);
   const [isReceiving, setIsReceiving] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
+  const [revealedLetterStep, setRevealedLetterStep] = useState(0);
   const openedTokenRef = useRef<string | null>(null);
   const acceptingTokenRef = useRef<string | null>(null);
+  const previousStateRef = useRef<ReceiverState>(state);
   const receiverToken = token ?? MOCK_GIFT_TOKEN;
   const isPreviewMode = isGiftPreviewMode();
   const themeVisual = getThemeVisual(gift?.theme);
 
   const scene = (gift?.occasion ?? "感谢") as Scene;
-  const bodyParagraphs = gift?.copy.body.split("\n\n") ?? ["", ""];
+  const letterBodySegments = splitLetterBody(gift?.copy.body);
+  const quoteRevealStep = 2 + letterBodySegments.length;
+  const signoffRevealStep = quoteRevealStep + 1;
+  const buttonRevealStep = signoffRevealStep + 1;
+  const totalLetterRevealSteps = buttonRevealStep;
   const centralLetterTitle = gift?.copy.title ?? "";
-  const centralLetterBodyP1 = bodyParagraphs[0] ?? "";
-  const centralLetterBodyP2 = bodyParagraphs[1] ?? "";
+  const centralLetterBodyP1 = letterBodySegments[0] ?? "";
+  const centralLetterBodyP2 = letterBodySegments.slice(1).join("\n\n");
   const centralLetterQuote = gift?.copy.quote ?? "";
   const centralLetterSignoff = gift?.copy.signoff ?? "";
   const coverText = gift?.copy.coverText ?? "";
@@ -129,6 +152,14 @@ export function ReceiverFlow({ onBack, onCreateGift, token }: ReceiverFlowProps)
     }
 
     onBack();
+  };
+
+  const revealAllLetter = () => {
+    setRevealedLetterStep(totalLetterRevealSteps);
+  };
+
+  const advanceLetterReveal = () => {
+    setRevealedLetterStep(currentStep => Math.min(currentStep + 1, totalLetterRevealSteps));
   };
 
   // Load mock gift through the service boundary.
@@ -165,7 +196,32 @@ export function ReceiverFlow({ onBack, onCreateGift, token }: ReceiverFlowProps)
     return () => { cancelled = true; };
   }, [receiverToken, loadAttempt, isPreviewMode]);
 
+  useEffect(() => {
+    if (state !== previousStateRef.current) {
+      setRevealedLetterStep(0);
+      previousStateRef.current = state;
+    }
+  }, [state]);
+
+  useEffect(() => {
+    if (state !== RECEIVER_STATES.letter || revealedLetterStep >= totalLetterRevealSteps) return;
+
+    const nextStep = revealedLetterStep + 1;
+    const delay = nextStep === 1
+      ? 650
+      : nextStep === quoteRevealStep
+        ? 1050
+        : 850;
+    const timeout = window.setTimeout(() => {
+      setRevealedLetterStep(nextStep);
+    }, delay);
+
+    return () => window.clearTimeout(timeout);
+  }, [quoteRevealStep, revealedLetterStep, state, totalLetterRevealSteps]);
+
   const handleOpen = () => {
+    if (isOpening) return;
+    setRevealedLetterStep(0);
     setIsOpening(true);
     setTimeout(() => { setState(RECEIVER_STATES.letter); setIsOpening(false); }, 700);
   };
@@ -319,9 +375,10 @@ export function ReceiverFlow({ onBack, onCreateGift, token }: ReceiverFlowProps)
           {/* ── Letter ───────────────────────────────────────────────────── */}
           {state === RECEIVER_STATES.letter && (
             <motion.div key="letter"
+              onClick={advanceLetterReveal}
               initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
               transition={{ duration: 0.5, ease: "easeOut" }}
-              style={{ padding: "72px 24px 48px", display: "flex", flexDirection: "column", gap: 0 }}>
+              style={{ padding: "72px 24px 48px", display: "flex", flexDirection: "column", gap: 0, cursor: revealedLetterStep < totalLetterRevealSteps ? "pointer" : "default" }}>
 
               <div style={{ borderRadius: themeVisual.cardRadius, background: themeVisual.surfaceBackground, border: `1px solid ${themeVisual.borderColor}`, boxShadow: "0 12px 60px rgba(63,52,47,0.09)", overflow: "hidden" }}>
 
@@ -330,59 +387,98 @@ export function ReceiverFlow({ onBack, onCreateGift, token }: ReceiverFlowProps)
 
                 {/* Header */}
                 <div style={{ padding: "28px 28px 0" }}>
-                  <p style={{ fontFamily: "'Lora', serif", color: themeVisual.accentColor, fontSize: 10, letterSpacing: 4, textTransform: "uppercase", margin: "0 0 10px" }}>
-                    {themeVisual.letterLabel}
-                  </p>
-                  <h1 style={{ fontFamily: "'Noto Serif SC', serif", color: "#3F342F", fontSize: 26, letterSpacing: 4, margin: "0 0 20px", lineHeight: 1.35 }}>
-                    {centralLetterTitle}
-                  </h1>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, margin: "0 0 10px" }}>
+                    <p style={{ fontFamily: "'Lora', serif", color: themeVisual.accentColor, fontSize: 10, letterSpacing: 4, textTransform: "uppercase", margin: 0 }}>
+                      {themeVisual.letterLabel}
+                    </p>
+                    {revealedLetterStep < totalLetterRevealSteps && (
+                      <button
+                        type="button"
+                        onClick={event => { event.stopPropagation(); revealAllLetter(); }}
+                        style={{ border: "none", background: "transparent", color: themeVisual.footerColor, fontFamily: "'Noto Sans SC', sans-serif", fontSize: 11, letterSpacing: 0.5, padding: 0, cursor: "pointer", whiteSpace: "nowrap" }}
+                      >
+                        跳过动画
+                      </button>
+                    )}
+                  </div>
+                  {revealedLetterStep >= 1 && (
+                    <motion.h1
+                      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.55, ease: "easeOut" }}
+                      style={{ fontFamily: "'Noto Serif SC', serif", color: "#3F342F", fontSize: 26, letterSpacing: 4, margin: "0 0 20px", lineHeight: 1.35 }}
+                    >
+                      {centralLetterTitle}
+                    </motion.h1>
+                  )}
                   <div style={{ height: 1, background: themeVisual.borderColor }} />
                 </div>
 
                 {/* Body */}
                 <div style={{ padding: "22px 28px 0", display: "flex", flexDirection: "column", gap: 16 }}>
-                  <p style={{ fontFamily: "'Noto Serif SC', serif", color: "#3F342F", fontSize: 15, lineHeight: 2.1, textIndent: "2em", letterSpacing: 0.5, margin: 0 }}>
-                    {centralLetterBodyP1}
-                  </p>
+                  {letterBodySegments.map((segment, index) => revealedLetterStep >= index + 2 && (
+                    <motion.p
+                      key={`${index}-${segment.slice(0, 12)}`}
+                      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.55, ease: "easeOut" }}
+                      style={{ fontFamily: "'Noto Serif SC', serif", color: "#3F342F", fontSize: 15, lineHeight: 2.1, textIndent: "2em", letterSpacing: 0.5, margin: 0 }}
+                    >
+                      {segment}
+                    </motion.p>
+                  ))}
 
                   {/* Quote block */}
-                  <div style={{ borderLeft: `3px solid ${themeVisual.accentColor}`, background: themeVisual.accentSoftColor, borderRadius: "0 12px 12px 0", padding: "14px 18px" }}>
-                    <p style={{ fontFamily: "'Lora', serif", color: "#9B8E86", fontSize: 14, lineHeight: 1.9, fontStyle: "italic", margin: 0, letterSpacing: 0.3 }}>
-                      "{centralLetterQuote}"
-                    </p>
-                  </div>
-
-                  <p style={{ fontFamily: "'Noto Serif SC', serif", color: "#3F342F", fontSize: 15, lineHeight: 2.1, textIndent: "2em", letterSpacing: 0.5, margin: 0 }}>
-                    {centralLetterBodyP2}
-                  </p>
+                  {revealedLetterStep >= quoteRevealStep && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.96, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+                      transition={{ duration: 0.65, ease: "easeOut" }}
+                      style={{ borderLeft: `3px solid ${themeVisual.accentColor}`, background: themeVisual.accentSoftColor, borderRadius: "0 12px 12px 0", padding: "14px 18px" }}
+                    >
+                      <p style={{ fontFamily: "'Lora', serif", color: "#9B8E86", fontSize: 14, lineHeight: 1.9, fontStyle: "italic", margin: 0, letterSpacing: 0.3 }}>
+                        "{centralLetterQuote}"
+                      </p>
+                    </motion.div>
+                  )}
 
                   {/* Signoff */}
-                  <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 4, paddingBottom: 4 }}>
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
-                      <span style={{ fontFamily: "'Noto Serif SC', serif", color: "#9B8E86", fontSize: 13, letterSpacing: 2 }}>
-                        — {centralLetterSignoff}
-                      </span>
-                      <span style={{ fontFamily: "'Lora', serif", color: "#C5BAB2", fontSize: 11, letterSpacing: 1 }}>
-                        {createdDateLabel}
-                      </span>
-                    </div>
-                  </div>
+                  {revealedLetterStep >= signoffRevealStep && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.45, ease: "easeOut" }}
+                      style={{ display: "flex", justifyContent: "flex-end", paddingTop: 4, paddingBottom: 4 }}
+                    >
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
+                        <span style={{ fontFamily: "'Noto Serif SC', serif", color: "#9B8E86", fontSize: 13, letterSpacing: 2 }}>
+                          — {centralLetterSignoff}
+                        </span>
+                        <span style={{ fontFamily: "'Lora', serif", color: "#C5BAB2", fontSize: 11, letterSpacing: 1 }}>
+                          {createdDateLabel}
+                        </span>
+                      </div>
+                    </motion.div>
+                  )}
 
                   <div style={{ height: 1, background: themeVisual.borderColor }} />
                 </div>
 
                 {/* Receive button */}
                 <div style={{ padding: "20px 28px 28px" }}>
-                  <motion.button
-                    onClick={handleReceive}
-                    disabled={isReceiving}
-                    whileTap={{ scale: 0.97 }}
-                    style={{ width: "100%", padding: "16px 0", borderRadius: 99, background: themeVisual.primaryColor, color: "#FFFFFF", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 15, letterSpacing: 2, border: "none", cursor: isReceiving ? "default" : "pointer", opacity: isReceiving ? 0.8 : 1, boxShadow: "0 6px 24px rgba(71,59,53,0.25)" }}>
-                    {receiverButtonText}
-                  </motion.button>
-                  <p style={{ fontFamily: "'Noto Sans SC', sans-serif", color: "#C5BAB2", fontSize: 11, textAlign: "center", letterSpacing: 1, margin: "12px 0 0" }}>
-                    这份心意只为你准备
-                  </p>
+                  {revealedLetterStep >= buttonRevealStep && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5, ease: "easeOut" }}
+                    >
+                      <motion.button
+                        onClick={event => { event.stopPropagation(); void handleReceive(); }}
+                        disabled={isReceiving}
+                        whileTap={{ scale: 0.97 }}
+                        style={{ width: "100%", padding: "16px 0", borderRadius: 99, background: themeVisual.primaryColor, color: "#FFFFFF", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 15, letterSpacing: 2, border: "none", cursor: isReceiving ? "default" : "pointer", opacity: isReceiving ? 0.8 : 1, boxShadow: "0 6px 24px rgba(71,59,53,0.25)" }}>
+                        {receiverButtonText}
+                      </motion.button>
+                      <p style={{ fontFamily: "'Noto Sans SC', sans-serif", color: "#C5BAB2", fontSize: 11, textAlign: "center", letterSpacing: 1, margin: "12px 0 0" }}>
+                        这份心意只为你准备
+                      </p>
+                    </motion.div>
+                  )}
                 </div>
               </div>
             </motion.div>
