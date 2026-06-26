@@ -80,54 +80,6 @@ function splitLetterBody(body: string | undefined) {
   ].filter(Boolean);
 }
 
-const LETTER_TITLE_DELAY_MS = 650;
-const LETTER_DEFAULT_DELAY_MS = 850;
-const LETTER_BODY_MS_PER_CHAR = 90;
-const LETTER_BODY_MIN_DELAY_MS = 1200;
-const LETTER_BODY_MAX_DELAY_MS = 4000;
-const LETTER_QUOTE_PRE_PAUSE_MS = 700;
-const LETTER_QUOTE_HOLD_MS = 2300;
-
-function clampDelay(value: number, min: number, max: number) {
-  return Math.min(Math.max(value, min), max);
-}
-
-function getTextCharacterCount(text: string) {
-  return Array.from(text.replace(/\s/g, "")).length;
-}
-
-function getLetterBodyDelay(text: string) {
-  return clampDelay(
-    getTextCharacterCount(text) * LETTER_BODY_MS_PER_CHAR,
-    LETTER_BODY_MIN_DELAY_MS,
-    LETTER_BODY_MAX_DELAY_MS,
-  );
-}
-
-function getLetterRevealDelay(
-  currentStep: number,
-  nextStep: number,
-  bodySegments: string[],
-  quoteStep: number,
-  signoffStep: number,
-) {
-  if (nextStep === 1) return LETTER_TITLE_DELAY_MS;
-
-  if (nextStep >= 2 && nextStep < quoteStep) {
-    return getLetterBodyDelay(bodySegments[nextStep - 2] ?? "");
-  }
-
-  if (nextStep === quoteStep) {
-    return getLetterBodyDelay(bodySegments[bodySegments.length - 1] ?? "") + LETTER_QUOTE_PRE_PAUSE_MS;
-  }
-
-  if (currentStep === quoteStep && nextStep === signoffStep) {
-    return LETTER_QUOTE_HOLD_MS;
-  }
-
-  return LETTER_DEFAULT_DELAY_MS;
-}
-
 // ─── Scene icons (for decorative use) ────────────────────────────────────────
 function SceneIcon({ scene, size = 28, color = "#FFFFFF" }: { scene: Scene; size?: number; color?: string }) {
   const props = { size, color, strokeWidth: 1.5 };
@@ -246,34 +198,16 @@ export function ReceiverFlow({ onBack, onCreateGift, token }: ReceiverFlowProps)
 
   useEffect(() => {
     if (state !== previousStateRef.current) {
-      setRevealedLetterStep(0);
+      setRevealedLetterStep(state === RECEIVER_STATES.letter ? 1 : 0);
       previousStateRef.current = state;
     }
   }, [state]);
-
-  useEffect(() => {
-    if (state !== RECEIVER_STATES.letter || revealedLetterStep >= totalLetterRevealSteps) return;
-
-    const nextStep = revealedLetterStep + 1;
-    const delay = getLetterRevealDelay(
-      revealedLetterStep,
-      nextStep,
-      letterBodySegments,
-      quoteRevealStep,
-      signoffRevealStep,
-    );
-    const timeout = window.setTimeout(() => {
-      setRevealedLetterStep(nextStep);
-    }, delay);
-
-    return () => window.clearTimeout(timeout);
-  }, [letterBodySegments, quoteRevealStep, revealedLetterStep, signoffRevealStep, state, totalLetterRevealSteps]);
 
   const handleOpen = () => {
     if (isOpening) return;
     setRevealedLetterStep(0);
     setIsOpening(true);
-    setTimeout(() => { setState(RECEIVER_STATES.letter); setIsOpening(false); }, 700);
+    setTimeout(() => { setRevealedLetterStep(1); setState(RECEIVER_STATES.letter); setIsOpening(false); }, 700);
   };
 
   const handleReceive = async () => {
@@ -527,6 +461,17 @@ export function ReceiverFlow({ onBack, onCreateGift, token }: ReceiverFlowProps)
                       <p style={{ fontFamily: "'Noto Sans SC', sans-serif", color: "#C5BAB2", fontSize: 11, textAlign: "center", letterSpacing: 1, margin: "12px 0 0" }}>
                         这份心意只为你准备
                       </p>
+                    </motion.div>
+                  )}
+
+                  {revealedLetterStep < totalLetterRevealSteps && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.35, ease: "easeOut" }}
+                      style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, color: themeVisual.footerColor, fontFamily: "'Noto Sans SC', sans-serif", fontSize: 11, letterSpacing: 1, opacity: 0.72, userSelect: "none" }}
+                    >
+                      <span>轻触继续</span>
+                      <span style={{ fontSize: 13, lineHeight: 1 }}>↓</span>
                     </motion.div>
                   )}
                 </div>
