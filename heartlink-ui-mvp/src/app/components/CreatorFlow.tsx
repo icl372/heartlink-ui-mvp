@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import {
   Heart, Star, MessageCircle, Zap, Gift,
   ArrowLeft, Copy, Check, RefreshCw, Edit3, X,
-  AlertCircle, WifiOff, ChevronRight, Mail,
+  AlertCircle, WifiOff, ChevronRight, Mail, Lock,
 } from "lucide-react";
 import {
   DEFAULT_CREATE_GIFT_INPUT,
@@ -38,10 +38,35 @@ type Tone = GiftTone;
 type AiStatus = AiGenerationStatus;
 type CopyStatus = CopyLinkStatus;
 type EditingField = EditableCopyField | null;
+type StructuredPromptField = "event" | "detail" | null;
 const MOCK_PREVIEW_TOKEN = "mock-heartlink-a9f2";
 
 interface CreatorFlowProps {
   onViewReceiver: () => void;
+  initialScene?: GiftOccasion;
+  startAtSceneSelection?: boolean;
+}
+
+const DETAIL_SOFT_PROMPT_TEXT = "再具体一点?比如发生在什么时候、什么地方、TA做了什么。";
+const VAGUE_DETAIL_KEYWORDS = ["爱", "陪伴", "辛苦", "付出", "谢谢", "感激", "照顾"];
+const CONCRETE_DETAIL_PATTERNS = [
+  /\d|[一二三四五六七八九十半两][点年月日号天周星期个月次岁]/,
+  /今天|昨天|明天|去年|今年|那天|晚上|早上|中午|凌晨|周末|生日|过年|春节|考试|住院|加班|下雨|生病|搬家|毕业|旅行|车站|医院|学校|公司|家里|厨房|门口|路上|机场|地铁|公交|餐厅|宿舍|办公室/,
+  /做|买|送|接|带|等|陪我|照顾我|给我|帮我|抱|煮|写|打电话|发消息|赶来|撑伞|开车|准备|记得|收拾/,
+];
+
+function countMessageCharacters(value: string) {
+  return Array.from(value.replace(/\s/g, "")).length;
+}
+
+function isMessageSpecificEnough(value: string) {
+  const normalized = value.trim();
+  if (countMessageCharacters(normalized) < 8) return false;
+
+  const hasVagueKeyword = VAGUE_DETAIL_KEYWORDS.some(keyword => normalized.includes(keyword));
+  if (!hasVagueKeyword) return true;
+
+  return CONCRETE_DETAIL_PATTERNS.some(pattern => pattern.test(normalized));
 }
 
 async function copyTextToClipboard(text: string) {
@@ -183,12 +208,17 @@ function Toast({ status }: { status: CopyStatus }) {
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
-  const [step, setStep] = useState<CreatorStep>(CREATOR_STEPS.home);
-  const [scene, setScene] = useState<Scene>(DEFAULT_CREATE_GIFT_INPUT.occasion);
+export function CreatorFlow({ initialScene, onViewReceiver, startAtSceneSelection = false }: CreatorFlowProps) {
+  const [step, setStep] = useState<CreatorStep>(
+    startAtSceneSelection ? CREATOR_STEPS.occasion : CREATOR_STEPS.home,
+  );
+  const [scene, setScene] = useState<Scene>(initialScene ?? DEFAULT_CREATE_GIFT_INPUT.occasion);
   const [recipient, setRecipient] = useState(DEFAULT_CREATE_GIFT_INPUT.recipientName);
   const [sender, setSender] = useState(DEFAULT_CREATE_GIFT_INPUT.senderName);
-  const [message, setMessage] = useState(DEFAULT_CREATE_GIFT_INPUT.originalMessage);
+  const [eventText, setEventText] = useState(DEFAULT_CREATE_GIFT_INPUT.event ?? "");
+  const [detailText, setDetailText] = useState(DEFAULT_CREATE_GIFT_INPUT.detail ?? "");
+  const [extraText, setExtraText] = useState(DEFAULT_CREATE_GIFT_INPUT.extra ?? "");
+  const [nicknameText, setNicknameText] = useState(DEFAULT_CREATE_GIFT_INPUT.nickname ?? "");
   const [amount, setAmount] = useState(DEFAULT_CREATE_GIFT_INPUT.amountText ?? "");
   const [tone, setTone] = useState<Tone>(DEFAULT_CREATE_GIFT_INPUT.tone);
   const [selectedStyle, setSelectedStyle] = useState<Style>(DEFAULT_THEME);
@@ -207,6 +237,8 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
   const [generatedLink, setGeneratedLink] = useState("");
   const [generatedToken, setGeneratedToken] = useState("");
   const [createGiftStatus, setCreateGiftStatus] = useState<CreateGiftStatus>("idle");
+  const [structuredPromptField, setStructuredPromptField] = useState<StructuredPromptField>(null);
+  const [hasBypassedStructuredPrompt, setHasBypassedStructuredPrompt] = useState(false);
   const generateRequestIdRef = useRef(0);
 
   const fallbackLink = createGiftUrl(MOCK_PREVIEW_TOKEN);
@@ -226,13 +258,26 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
     });
   };
 
+  const buildStructuredOriginalMessage = () => {
+    return [
+      eventText.trim() ? `这次是因为：${eventText.trim()}` : "",
+      detailText.trim() ? `关于TA的细节：${detailText.trim()}` : "",
+      extraText.trim() ? `补充的瞬间或对话：${extraText.trim()}` : "",
+      nicknameText.trim() ? `彼此懂的梗或称呼：${nicknameText.trim()}` : "",
+    ].filter(Boolean).join("\n");
+  };
+
   const buildGenerateCopyInput = (): GenerateCopyInput => ({
     recipientName: recipient,
     senderName: sender,
     occasion: scene,
     tone,
     amountText: amount.trim() ? amount : undefined,
-    originalMessage: message,
+    event: eventText,
+    detail: detailText,
+    extra: extraText.trim() ? extraText : undefined,
+    nickname: nicknameText.trim() ? nicknameText : undefined,
+    originalMessage: buildStructuredOriginalMessage(),
   });
 
   const applyGeneratedCopy = (copy: GenerateCopyResult) => {
@@ -270,6 +315,32 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
 
   const handleGenerate = () => {
     if (!isReadyToGenerate) return;
+    if (!hasBypassedStructuredPrompt && !isMessageSpecificEnough(eventText)) {
+      setStructuredPromptField("event");
+      return;
+    }
+
+    if (!hasBypassedStructuredPrompt && !isMessageSpecificEnough(detailText)) {
+      setStructuredPromptField("detail");
+      return;
+    }
+
+    setStructuredPromptField(null);
+    void runGenerateCopy();
+  };
+
+  const handleStructuredFieldChange = (
+    setter: (value: string) => void,
+    value: string,
+  ) => {
+    setter(value);
+    setStructuredPromptField(null);
+    setHasBypassedStructuredPrompt(false);
+  };
+
+  const handleBypassStructuredPrompt = () => {
+    setHasBypassedStructuredPrompt(true);
+    setStructuredPromptField(null);
     void runGenerateCopy();
   };
 
@@ -283,7 +354,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
     occasion: scene,
     tone,
     theme: selectedStyle,
-    originalMessage: message,
+    originalMessage: buildStructuredOriginalMessage(),
     amountText: amount.trim() ? amount : undefined,
     copy: {
       coverText: generatedCoverText,
@@ -324,7 +395,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
     }
   };
 
-  const isReadyToGenerate = Boolean(message.trim() && recipient.trim());
+  const isReadyToGenerate = Boolean(recipient.trim() && eventText.trim() && detailText.trim());
   const showProgress = step >= FIRST_PROGRESS_STEP && step <= LAST_PROGRESS_STEP;
   const progressInfo = PROGRESS_MAP[step];
 
@@ -389,7 +460,7 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
               {/* Center card */}
               <div style={{ width: "100%", borderRadius: 26, background: "#FFFFFF", padding: "42px 30px 34px", boxShadow: "0 4px 40px rgba(63,52,47,0.07)", textAlign: "center", marginTop: 34 }}>
                 <p style={{ fontFamily: "'Noto Serif SC', serif", color: "#3F342F", fontSize: 18, lineHeight: 2.05, letterSpacing: 1, margin: "0 0 30px" }}>
-                  写下想说的话，<br />
+                  写下这次心意的细节，<br />
                   <span style={{ color: "#C9A66B" }}>让它变成一份可以被打开的小礼物。</span>
                 </p>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
@@ -501,14 +572,68 @@ export function CreatorFlow({ onViewReceiver }: CreatorFlowProps) {
                   style={inputStyle} />
               </FormField>
 
-              <FormField label="想说的话" required hint={`${message.length} 字 · 建议 30–150 字`}>
-                <textarea value={message} onChange={e => setMessage(e.target.value)}
-                  placeholder="例如：祝你天天开心，顺顺利利。谢谢你一直以来的照顾。"
-                  rows={5} style={{ ...inputStyle, resize: "none", lineHeight: 1.9 }} />
+              <FormField label="这次是因为什么" required hint={`${eventText.length} 字`}>
+                <input value={eventText} onChange={e => handleStructuredFieldChange(setEventText, e.target.value)}
+                  placeholder="例如：她下周要去外地工作了 / 他考研上岸了"
+                  style={inputStyle} />
+                {structuredPromptField === "event" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "10px 12px", borderRadius: 14, background: "#FFF8ED", border: "1px solid #EADCC8", marginTop: 8 }}>
+                    <p style={{ fontFamily: "'Noto Sans SC', sans-serif", color: "#7F6F66", fontSize: 12, lineHeight: 1.6, letterSpacing: 0.2, margin: 0 }}>
+                      {DETAIL_SOFT_PROMPT_TEXT}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleBypassStructuredPrompt}
+                      style={{ alignSelf: "flex-start", border: "none", background: "transparent", color: "#8B6F47", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 12, letterSpacing: 0.5, padding: 0, cursor: "pointer" }}
+                    >
+                      已经够具体了,继续生成
+                    </button>
+                  </div>
+                )}
+              </FormField>
+
+              <FormField label="关于TA,你最想提的一个细节" required hint={`${detailText.length} 字 · 建议写具体一点`}>
+                <textarea value={detailText} onChange={e => handleStructuredFieldChange(setDetailText, e.target.value)}
+                  placeholder="例如：他每次点外卖都先问我要不要辣"
+                  rows={4} style={{ ...inputStyle, resize: "none", lineHeight: 1.9 }} />
+                {structuredPromptField === "detail" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "10px 12px", borderRadius: 14, background: "#FFF8ED", border: "1px solid #EADCC8", marginTop: 8 }}>
+                    <p style={{ fontFamily: "'Noto Sans SC', sans-serif", color: "#7F6F66", fontSize: 12, lineHeight: 1.6, letterSpacing: 0.2, margin: 0 }}>
+                      {DETAIL_SOFT_PROMPT_TEXT}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleBypassStructuredPrompt}
+                      style={{ alignSelf: "flex-start", border: "none", background: "transparent", color: "#8B6F47", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 12, letterSpacing: 0.5, padding: 0, cursor: "pointer" }}
+                    >
+                      已经够具体了,继续生成
+                    </button>
+                  </div>
+                )}
                 <p style={{ fontFamily: "'Noto Sans SC', sans-serif", color: "#9B8E86", fontSize: 11, lineHeight: 1.7, letterSpacing: 0.2, margin: "2px 0 0" }}>
                   请不要填写身份证号、手机号、银行卡号、住址、密码、医疗信息等敏感信息。<br />
                   生成内容会用于创建并分享这份心意链接，请只分享给你信任的人。
                 </p>
+              </FormField>
+
+              <FormField label="再补充一个具体的瞬间或对话">
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, color: "#B8A89E", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 11, letterSpacing: 0.4 }}>
+                  <Lock size={12} strokeWidth={1.8} />
+                  <span>进阶填写 · 选填</span>
+                </div>
+                <textarea value={extraText} onChange={e => setExtraText(e.target.value)}
+                  placeholder="例如：那天你说“别急,我在楼下等你”"
+                  rows={3} style={{ ...inputStyle, resize: "none", lineHeight: 1.9 }} />
+              </FormField>
+
+              <FormField label="你们之间有没有一个只有彼此懂的梗/称呼">
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, color: "#B8A89E", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 11, letterSpacing: 0.4 }}>
+                  <Lock size={12} strokeWidth={1.8} />
+                  <span>进阶填写 · 选填</span>
+                </div>
+                <input value={nicknameText} onChange={e => setNicknameText(e.target.value)}
+                  placeholder="例如：小太阳 / 只属于你们的称呼"
+                  style={inputStyle} />
               </FormField>
 
               {scene === "小心意" && (

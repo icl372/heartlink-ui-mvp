@@ -6,6 +6,10 @@ export const DEFAULT_CREATE_GIFT_INPUT: GenerateCopyInput = {
   occasion: "感谢",
   tone: "真诚",
   amountText: "",
+  event: "",
+  detail: "",
+  extra: "",
+  nickname: "",
   originalMessage: "",
 };
 
@@ -15,6 +19,10 @@ export const MOCK_GIFT_INPUT: GenerateCopyInput = {
   occasion: "感谢",
   tone: "真诚",
   amountText: "200",
+  event: "妈妈给我转了 200 元",
+  detail: "她总是在我需要支持的时候，第一时间给我回应。",
+  extra: "",
+  nickname: "",
   originalMessage: "妈妈给我转了200元，我想感谢她对我的疼爱和支持。",
 };
 

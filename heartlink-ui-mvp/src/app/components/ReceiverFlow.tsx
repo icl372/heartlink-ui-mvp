@@ -16,6 +16,7 @@ type Scene = GiftOccasion;
 
 interface ReceiverFlowProps {
   onBack: () => void;
+  onCreateGift?: (scene?: GiftOccasion) => void;
   token?: string;
 }
 
@@ -94,7 +95,7 @@ function SkeletonBlock({ width = "100%", height = 14, radius = 99, style }: { wi
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
+export function ReceiverFlow({ onBack, onCreateGift, token }: ReceiverFlowProps) {
   const [state, setState] = useState<ReceiverState>(RECEIVER_STATES.loading);
   const [gift, setGift] = useState<GiftData | null>(null);
   const [isOpening, setIsOpening] = useState(false);
@@ -120,6 +121,15 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
   const receivedDetailText = gift?.copy.acceptedText?.trim() || "这份心意已被珍藏";
   const createdDateLabel = getCreatedDateLabel(gift?.createdAt, scene);
   const acceptedDateLabel = formatAcceptedDate(gift?.acceptedAt);
+
+  const handleCreateGift = () => {
+    if (onCreateGift) {
+      onCreateGift(scene);
+      return;
+    }
+
+    onBack();
+  };
 
   // Load mock gift through the service boundary.
   useEffect(() => {
@@ -445,6 +455,22 @@ export function ReceiverFlow({ onBack, token }: ReceiverFlowProps) {
                     <p style={{ fontFamily: "'Noto Serif SC', serif", color: "#C5BAB2", fontSize: 12, letterSpacing: 0.5, margin: 0 }}>
                       {receivedDetailText}
                     </p>
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.55 }}
+                    style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginTop: 22, paddingTop: 20, borderTop: `1px solid ${themeVisual.borderColor}` }}>
+                    <p style={{ fontFamily: "'Noto Sans SC', sans-serif", color: "#9B8E86", fontSize: 13, letterSpacing: 0.5, margin: 0, textAlign: "center" }}>
+                      也想为TA做一份这样的心意?
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleCreateGift}
+                      style={{ border: `1px solid ${themeVisual.borderColor}`, background: themeVisual.surfaceBackground, color: themeVisual.primaryColor, borderRadius: 99, padding: "9px 18px", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 13, letterSpacing: 1.2, cursor: "pointer" }}
+                    >
+                      立即创建
+                    </button>
                   </motion.div>
                 </div>
               </div>

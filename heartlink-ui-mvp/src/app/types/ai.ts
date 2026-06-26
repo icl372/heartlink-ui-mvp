@@ -6,6 +6,10 @@ export interface GenerateCopyInput {
   occasion: GiftOccasion;
   tone: GiftTone;
   amountText?: string;
+  event?: string;
+  detail?: string;
+  extra?: string;
+  nickname?: string;
   originalMessage: string;
 }
 
@@ -25,12 +29,17 @@ export const GENERATE_COPY_INPUT_FIELDS = [
   "occasion",
   "tone",
   "amountText",
+  "event",
+  "detail",
+  "extra",
+  "nickname",
   "originalMessage",
 ] as const satisfies readonly (keyof GenerateCopyInput)[];
 
 export const GENERATE_COPY_REQUIRED_TEXT_FIELDS = [
   "recipientName",
-  "originalMessage",
+  "event",
+  "detail",
 ] as const satisfies readonly (keyof GenerateCopyInput)[];
 
 export const GENERATE_COPY_OUTPUT_FIELDS = [

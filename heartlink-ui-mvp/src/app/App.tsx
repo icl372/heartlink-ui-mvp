@@ -3,6 +3,7 @@ import { useState } from "react";
 import { CreatorFlow } from "./components/CreatorFlow";
 import { ReceiverFlow } from "./components/ReceiverFlow";
 import { getGiftTokenFromLocation } from "./lib";
+import type { GiftOccasion } from "./types";
 
 /* MARKER-MAKE-KIT-INVOKED */
 
@@ -15,18 +16,22 @@ function getReceiverTokenFromPath() {
 export default function App() {
   const [receiverToken, setReceiverToken] = useState<string | undefined>(() => getReceiverTokenFromPath());
   const [mode, setMode] = useState<AppMode>(() => getReceiverTokenFromPath() ? "receiver" : "creator");
+  const [creatorInitialScene, setCreatorInitialScene] = useState<GiftOccasion | undefined>();
+  const [startCreatorAtSceneSelection, setStartCreatorAtSceneSelection] = useState(false);
 
   const showReceiver = () => {
     setReceiverToken(getReceiverTokenFromPath());
     setMode("receiver");
   };
 
-  const showCreator = () => {
+  const showCreator = (initialScene?: GiftOccasion) => {
     if (typeof window !== "undefined" && window.location.pathname.match(/^\/to\//)) {
       window.history.pushState(null, "", "/");
     }
 
     setReceiverToken(undefined);
+    setCreatorInitialScene(initialScene);
+    setStartCreatorAtSceneSelection(Boolean(initialScene));
     setMode("creator");
   };
 
@@ -34,9 +39,13 @@ export default function App() {
       <>
     <div className="size-full">
       {mode === "creator" ? (
-        <CreatorFlow onViewReceiver={showReceiver} />
+        <CreatorFlow
+          initialScene={creatorInitialScene}
+          onViewReceiver={showReceiver}
+          startAtSceneSelection={startCreatorAtSceneSelection}
+        />
       ) : (
-        <ReceiverFlow token={receiverToken} onBack={showCreator} />
+        <ReceiverFlow token={receiverToken} onBack={() => showCreator()} onCreateGift={showCreator} />
       )}
     </div>
 

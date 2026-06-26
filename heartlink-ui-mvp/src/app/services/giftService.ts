@@ -4,7 +4,6 @@ import {
   MOCK_GIFT_TOKEN,
 } from "../data";
 import { createGiftUrl, generateGiftToken } from "../lib";
-import { GENERATE_COPY_REQUIRED_TEXT_FIELDS } from "../types";
 import type {
   AcceptGiftResult,
   AiGenerationError,
@@ -169,6 +168,17 @@ async function generateCopyFromOwnedApi(input: GenerateCopyInput): Promise<Gener
   }
 
   return payload;
+}
+
+function getGenerateCopyTextForValidation(input: GenerateCopyInput) {
+  return [
+    input.event,
+    input.detail,
+    input.extra,
+    input.nickname,
+    input.originalMessage,
+  ].filter((value): value is string => typeof value === "string" && Boolean(value.trim()))
+    .join("\n");
 }
 
 type CreateGiftApiResult = CreateGiftResult & { ok: true };
@@ -418,10 +428,9 @@ function getStoredOrDefaultGift(token: string) {
 export async function generateCopy(input: GenerateCopyInput): Promise<GenerateCopyResult> {
   await delay(MOCK_GENERATE_COPY_DELAY_MS);
 
-  const hasMissingRequiredText = GENERATE_COPY_REQUIRED_TEXT_FIELDS.some(field => {
-    const value = input[field];
-    return typeof value === "string" && !value.trim();
-  });
+  const hasStructuredInput = Boolean(input.event?.trim() && input.detail?.trim());
+  const hasLegacyInput = Boolean(input.originalMessage.trim());
+  const hasMissingRequiredText = !input.recipientName.trim() || (!hasStructuredInput && !hasLegacyInput);
 
   if (hasMissingRequiredText) {
     throw createAiGenerationError(
@@ -430,7 +439,7 @@ export async function generateCopy(input: GenerateCopyInput): Promise<GenerateCo
     );
   }
 
-  const normalizedMessage = input.originalMessage.toLowerCase();
+  const normalizedMessage = getGenerateCopyTextForValidation(input).toLowerCase();
 
   if (normalizedMessage.includes(MOCK_AI_NETWORK_ERROR_TRIGGER)) {
     throw createAiGenerationError(

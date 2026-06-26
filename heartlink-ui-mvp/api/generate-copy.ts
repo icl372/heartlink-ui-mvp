@@ -26,6 +26,17 @@ type ProviderResponse = {
   }>;
 };
 
+type DeepSeekMessage = {
+  role: "system" | "user";
+  content: string;
+};
+
+type ExtractedGiftContext = {
+  event: string;
+  detail: string;
+  relation: string;
+};
+
 type RateLimitConfig = {
   enabled: boolean;
   windowMinutes: number;
@@ -45,7 +56,8 @@ const SUPPORTED_DEEPSEEK_MODELS = new Set([
   "deepseek-v4-flash",
   "deepseek-v4-pro",
 ]);
-const REQUEST_TIMEOUT_MS = 12_000;
+const PROVIDER_CALL_TIMEOUT_MS = 25_000;
+const MAX_GENERATION_RETRIES = 2;
 const SUPABASE_RATE_LIMIT_TABLE_PATH = "/rest/v1/ai_usage_events";
 const RATE_LIMIT_ROUTE = "generate-copy";
 const DEFAULT_RATE_LIMIT_WINDOW_MINUTES = 10;
@@ -87,6 +99,17 @@ const UNSAFE_SHORT_UI_TEXT_TERMS = [
   "一封信",
   "领取惊喜",
 ];
+const BANNED_COPY_TERMS = [
+  "父爱如山",
+  "母爱如山",
+  "坚实的后盾",
+  "温暖如阳光",
+  "默默付出",
+  "无私奉献",
+  "一直陪伴",
+  "感恩常在",
+  "风雨同舟",
+];
 
 function sendError(
   response: VercelResponse,
@@ -120,11 +143,28 @@ function readGenerateCopyInput(body: unknown): GenerateCopyInput | undefined {
     || typeof value.senderName !== "string"
     || typeof value.occasion !== "string"
     || typeof value.tone !== "string"
-    || typeof value.originalMessage !== "string"
+    || (value.originalMessage !== undefined && typeof value.originalMessage !== "string")
     || (value.amountText !== undefined && typeof value.amountText !== "string")
+    || (value.event !== undefined && typeof value.event !== "string")
+    || (value.detail !== undefined && typeof value.detail !== "string")
+    || (value.extra !== undefined && typeof value.extra !== "string")
+    || (value.nickname !== undefined && typeof value.nickname !== "string")
   ) {
     return undefined;
   }
+
+  const event = typeof value.event === "string" ? value.event.trim() : undefined;
+  const detail = typeof value.detail === "string" ? value.detail.trim() : undefined;
+  const extra = typeof value.extra === "string" ? value.extra.trim() : undefined;
+  const nickname = typeof value.nickname === "string" ? value.nickname.trim() : undefined;
+  const originalMessage = typeof value.originalMessage === "string"
+    ? value.originalMessage.trim()
+    : [
+        event ? `这次是因为：${event}` : "",
+        detail ? `关于TA的细节：${detail}` : "",
+        extra ? `补充的瞬间或对话：${extra}` : "",
+        nickname ? `彼此懂的梗或称呼：${nickname}` : "",
+      ].filter(Boolean).join("\n");
 
   return {
     recipientName: value.recipientName.trim(),
@@ -132,7 +172,11 @@ function readGenerateCopyInput(body: unknown): GenerateCopyInput | undefined {
     occasion: value.occasion as GenerateCopyInput["occasion"],
     tone: value.tone as GenerateCopyInput["tone"],
     amountText: typeof value.amountText === "string" ? value.amountText.trim() : undefined,
-    originalMessage: value.originalMessage.trim(),
+    event,
+    detail,
+    extra,
+    nickname,
+    originalMessage,
   };
 }
 
@@ -319,12 +363,52 @@ async function checkRateLimit(request: VercelRequest): Promise<RateLimitDecision
   return { allowed: true };
 }
 
-function buildMessages(input: GenerateCopyInput) {
+function buildExtractionMessages(input: GenerateCopyInput): DeepSeekMessage[] {
+  return [
+    {
+      role: "system",
+      content: [
+        "You are an information extraction assistant for a Chinese HeartLink blessing-card product.",
+        "Only extract structured facts from the user input. Do not write copy, blessings, slogans, titles, quotes, or button text.",
+        "Return only one JSON object with these non-empty string keys: event, detail, relation.",
+        "event: the concrete cause, occasion, or reason for this HeartLink message.",
+        "detail: concrete small details, habits, actions, time, place, or remembered moments from the user input. Preserve the user's own concrete wording when possible.",
+        "relation: the relationship label between recipientName and senderName, inferred conservatively from the fields.",
+        "If the input is sparse, still extract the most concrete available facts instead of inventing new events.",
+        "Do not include markdown fences, explanations, or extra keys.",
+      ].join(" "),
+    },
+    {
+      role: "user",
+      content: JSON.stringify({
+        recipientName: input.recipientName,
+        senderName: input.senderName,
+        occasion: input.occasion,
+        tone: input.tone,
+        amountText: input.amountText,
+        event: input.event,
+        detail: input.detail,
+        extra: input.extra,
+        nickname: input.nickname,
+        originalMessage: input.originalMessage,
+      }),
+    },
+  ];
+}
+
+function buildGenerationMessages(
+  input: GenerateCopyInput,
+  extractedContext: ExtractedGiftContext,
+  bannedTerms: string[],
+): DeepSeekMessage[] {
   return [
     {
       role: "system",
       content: [
         "You write warm, restrained Chinese gift-letter copy.",
+        "Use the provided extracted JSON as the primary source of truth. Do not ignore the detail field.",
+        "The body must naturally mention at least one concrete detail from extracted.detail. Avoid generic thanks or empty blessing templates.",
+        `Do not use these banned phrases or highly similar expressions: ${bannedTerms.join("、")}.`,
         "Return only one JSON object with these non-empty string keys:",
         "coverText, title, body, quote, buttonText, signoff, acceptedText.",
         "This product is a HeartLink blessing-card experience, not a red-packet, cash, payment, collection, transfer, withdrawal, or reward tool.",
@@ -341,12 +425,21 @@ function buildMessages(input: GenerateCopyInput) {
     {
       role: "user",
       content: JSON.stringify({
-        recipientName: input.recipientName,
-        senderName: input.senderName,
-        occasion: input.occasion,
-        tone: input.tone,
-        amountText: input.amountText,
-        originalMessage: input.originalMessage,
+        originalInput: {
+          recipientName: input.recipientName,
+          senderName: input.senderName,
+          occasion: input.occasion,
+          tone: input.tone,
+          amountText: input.amountText,
+          event: input.event,
+          detail: input.detail,
+          extra: input.extra,
+          nickname: input.nickname,
+          originalMessage: input.originalMessage,
+        },
+        extracted: extractedContext,
+        extra: input.extra,
+        nickname: input.nickname,
       }),
     },
   ];
@@ -388,6 +481,50 @@ function sanitizeCoverText(value: unknown): string {
   return sanitizeShortUiText(value, SAFE_COVER_TEXT_ALLOWLIST, SAFE_COVER_TEXT);
 }
 
+function readExtractedGiftContext(payload: unknown): ExtractedGiftContext | undefined {
+  if (!isRecord(payload)) return undefined;
+
+  if (
+    typeof payload.event !== "string"
+    || typeof payload.detail !== "string"
+    || typeof payload.relation !== "string"
+  ) {
+    return undefined;
+  }
+
+  const event = payload.event.trim();
+  const detail = payload.detail.trim();
+  const relation = payload.relation.trim();
+
+  if (!event || !detail || !relation) return undefined;
+
+  return { event, detail, relation };
+}
+
+function buildStructuredExtractedContext(input: GenerateCopyInput): ExtractedGiftContext | undefined {
+  const event = input.event?.trim();
+  const detail = input.detail?.trim();
+
+  if (!event || !detail) return undefined;
+
+  const detailParts = [
+    detail,
+    input.extra?.trim() ? `补充瞬间或对话：${input.extra.trim()}` : "",
+    input.nickname?.trim() ? `彼此懂的梗或称呼：${input.nickname.trim()}` : "",
+  ].filter(Boolean);
+  const relation = [
+    input.recipientName,
+    input.senderName ? `和${input.senderName}` : "",
+    input.nickname?.trim() ? `，称呼/梗：${input.nickname.trim()}` : "",
+  ].filter(Boolean).join("");
+
+  return {
+    event,
+    detail: detailParts.join("\n"),
+    relation: relation || "收信人与送信人",
+  };
+}
+
 function readGeneratedCopy(payload: unknown): GenerateCopyResult | undefined {
   if (!isRecord(payload)) return undefined;
 
@@ -418,6 +555,127 @@ function getProviderErrorCode(status: number): AiGenerationErrorCode {
   return "ai-service-unavailable";
 }
 
+function getMatchedBannedTerms(copy: GenerateCopyResult) {
+  const text = [
+    copy.title,
+    copy.body,
+    copy.quote,
+    copy.signoff,
+  ].join("\n");
+
+  return BANNED_COPY_TERMS.filter(term => text.includes(term));
+}
+
+function removeBannedSentences(value: string) {
+  const sentencePattern = /[^。！？!?；;\n]+[。！？!?；;]?|\n+/g;
+  const parts = value.match(sentencePattern) ?? [value];
+  const cleanedParts = parts.filter(part => {
+    if (/^\n+$/.test(part)) return true;
+    return !BANNED_COPY_TERMS.some(term => part.includes(term));
+  });
+  const cleaned = cleanedParts.join("").replace(/\n{3,}/g, "\n\n").trim();
+
+  return cleaned || value;
+}
+
+function removeBannedCopySentences(copy: GenerateCopyResult): GenerateCopyResult {
+  return {
+    ...copy,
+    title: BANNED_COPY_TERMS.some(term => copy.title.includes(term)) ? "把这份心意送给你" : copy.title,
+    body: removeBannedSentences(copy.body),
+    quote: BANNED_COPY_TERMS.some(term => copy.quote.includes(term)) ? "愿这份心意，被你温柔收下。" : copy.quote,
+    signoff: removeBannedSentences(copy.signoff),
+  };
+}
+
+async function callDeepSeekJson(
+  apiKey: string,
+  model: string,
+  messages: DeepSeekMessage[],
+): Promise<unknown> {
+  const abortController = new AbortController();
+  const timeout = setTimeout(() => abortController.abort(), PROVIDER_CALL_TIMEOUT_MS);
+
+  let providerResponse: Response;
+
+  try {
+    providerResponse = await fetch(DEEPSEEK_API_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        thinking: { type: "disabled" },
+        reasoning_effort: "high",
+        stream: false,
+        response_format: { type: "json_object" },
+      }),
+      signal: abortController.signal,
+    });
+  } catch {
+    throw new Error("network-error");
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  if (!providerResponse.ok) {
+    throw new Error(getProviderErrorCode(providerResponse.status));
+  }
+
+  let providerPayload: ProviderResponse;
+
+  try {
+    providerPayload = await providerResponse.json() as ProviderResponse;
+  } catch {
+    throw new Error("ai-generation-failed");
+  }
+
+  const content = providerPayload.choices?.[0]?.message?.content;
+
+  if (typeof content !== "string" || !content.trim()) {
+    throw new Error("ai-content-empty");
+  }
+
+  try {
+    return JSON.parse(content);
+  } catch {
+    throw new Error("ai-content-empty");
+  }
+}
+
+async function generateCopyWithRetries(
+  apiKey: string,
+  model: string,
+  input: GenerateCopyInput,
+  extractedContext: ExtractedGiftContext,
+) {
+  let latestCopy: GenerateCopyResult | undefined;
+
+  for (let attempt = 0; attempt <= MAX_GENERATION_RETRIES; attempt += 1) {
+    const generatedPayload = await callDeepSeekJson(
+      apiKey,
+      model,
+      buildGenerationMessages(input, extractedContext, BANNED_COPY_TERMS),
+    );
+    const generatedCopy = readGeneratedCopy(generatedPayload);
+
+    if (!generatedCopy) {
+      throw new Error("ai-content-empty");
+    }
+
+    latestCopy = generatedCopy;
+
+    if (getMatchedBannedTerms(generatedCopy).length === 0) {
+      return generatedCopy;
+    }
+  }
+
+  return latestCopy ? removeBannedCopySentences(latestCopy) : undefined;
+}
+
 export default async function handler(request: VercelRequest, response: VercelResponse) {
   if (request.method !== "POST") {
     response.setHeader?.("Allow", "POST");
@@ -426,7 +684,9 @@ export default async function handler(request: VercelRequest, response: VercelRe
 
   const input = readGenerateCopyInput(request.body);
 
-  if (!input?.recipientName || !input.originalMessage) {
+  const hasStructuredInput = Boolean(input?.event?.trim() && input.detail?.trim());
+
+  if (!input?.recipientName || (!input.originalMessage && !hasStructuredInput)) {
     return sendError(response, 400, "validation-empty", "Required copy input is empty.");
   }
 
@@ -452,66 +712,40 @@ export default async function handler(request: VercelRequest, response: VercelRe
     return sendError(response, 503, "ai-service-unavailable", "AI service is unavailable.");
   }
 
-  const abortController = new AbortController();
-  const timeout = setTimeout(() => abortController.abort(), REQUEST_TIMEOUT_MS);
-
-  let providerResponse: Response;
-
   try {
-    providerResponse = await fetch(DEEPSEEK_API_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        messages: buildMessages(input),
-        thinking: { type: "disabled" },
-        reasoning_effort: "high",
-        stream: false,
-        response_format: { type: "json_object" },
-      }),
-      signal: abortController.signal,
-    });
-  } catch {
-    return sendError(response, 503, "network-error", "Unable to reach the AI service.");
-  } finally {
-    clearTimeout(timeout);
-  }
+    let extractedContext = buildStructuredExtractedContext(input);
 
-  if (!providerResponse.ok) {
-    const code = getProviderErrorCode(providerResponse.status);
-    return sendError(response, 502, code, "AI generation is unavailable.");
-  }
+    if (!extractedContext) {
+      const extractedPayload = await callDeepSeekJson(apiKey, model, buildExtractionMessages(input));
+      extractedContext = readExtractedGiftContext(extractedPayload);
+    }
 
-  let providerPayload: ProviderResponse;
+    if (!extractedContext) {
+      return sendError(response, 502, "ai-content-empty", "AI returned incomplete extracted content.");
+    }
 
-  try {
-    providerPayload = await providerResponse.json() as ProviderResponse;
-  } catch {
+    const generatedCopy = await generateCopyWithRetries(apiKey, model, input, extractedContext);
+
+    if (!generatedCopy) {
+      return sendError(response, 502, "ai-content-empty", "AI returned incomplete content.");
+    }
+
+    return response.status(200).json(generatedCopy);
+  } catch (error) {
+    const code = error instanceof Error ? error.message : "ai-generation-failed";
+
+    if (code === "network-error") {
+      return sendError(response, 503, "network-error", "Unable to reach the AI service.");
+    }
+
+    if (code === "ai-content-empty") {
+      return sendError(response, 502, "ai-content-empty", "AI returned invalid content.");
+    }
+
+    if (code === "ai-service-unavailable") {
+      return sendError(response, 502, "ai-service-unavailable", "AI generation is unavailable.");
+    }
+
     return sendError(response, 502, "ai-generation-failed", "AI generation failed.");
   }
-
-  const content = providerPayload.choices?.[0]?.message?.content;
-
-  if (typeof content !== "string" || !content.trim()) {
-    return sendError(response, 502, "ai-content-empty", "AI returned empty content.");
-  }
-
-  let generatedPayload: unknown;
-
-  try {
-    generatedPayload = JSON.parse(content);
-  } catch {
-    return sendError(response, 502, "ai-content-empty", "AI returned invalid content.");
-  }
-
-  const generatedCopy = readGeneratedCopy(generatedPayload);
-
-  if (!generatedCopy) {
-    return sendError(response, 502, "ai-content-empty", "AI returned incomplete content.");
-  }
-
-  return response.status(200).json(generatedCopy);
 }
