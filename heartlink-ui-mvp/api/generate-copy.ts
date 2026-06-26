@@ -134,6 +134,33 @@ function parseRequestBody(body: unknown): unknown {
   }
 }
 
+function normalizeOptionalContext(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+
+  const normalizedValue = value.trim();
+  const compactValue = normalizedValue.replace(/[\s。！？!?，,.、；;~～…]+/g, "");
+  const emptyLikeValues = new Set([
+    "没有",
+    "无",
+    "没",
+    "暂无",
+    "暂时没有",
+    "没有了",
+    "没了",
+    "无了",
+    "不用",
+    "不填",
+    "不记得",
+    "不知道",
+  ]);
+
+  if (!normalizedValue || emptyLikeValues.has(compactValue)) {
+    return undefined;
+  }
+
+  return normalizedValue;
+}
+
 function readGenerateCopyInput(body: unknown): GenerateCopyInput | undefined {
   const value = parseRequestBody(body);
 
@@ -155,8 +182,8 @@ function readGenerateCopyInput(body: unknown): GenerateCopyInput | undefined {
 
   const event = typeof value.event === "string" ? value.event.trim() : undefined;
   const detail = typeof value.detail === "string" ? value.detail.trim() : undefined;
-  const extra = typeof value.extra === "string" ? value.extra.trim() : undefined;
-  const nickname = typeof value.nickname === "string" ? value.nickname.trim() : undefined;
+  const extra = normalizeOptionalContext(value.extra);
+  const nickname = normalizeOptionalContext(value.nickname);
   const originalMessage = typeof value.originalMessage === "string"
     ? value.originalMessage.trim()
     : [
@@ -408,6 +435,8 @@ function buildGenerationMessages(
         "You write warm, restrained Chinese gift-letter copy.",
         "Use the provided extracted JSON as the primary source of truth. Do not ignore the detail field.",
         "The body must naturally mention at least one concrete detail from extracted.detail. Avoid generic thanks or empty blessing templates.",
+        "The opening sentence of body should also be grounded in concrete information from extracted.event or extracted.detail. Do not start with broad scene-setting such as seeing someone busy, always being there, or generic family/friendship descriptions.",
+        "Avoid a stitched feeling where the first sentence is generic and only the ending mentions a concrete detail.",
         `Do not use these banned phrases or highly similar expressions: ${bannedTerms.join("、")}.`,
         "Return only one JSON object with these non-empty string keys:",
         "coverText, title, body, quote, buttonText, signoff, acceptedText.",
