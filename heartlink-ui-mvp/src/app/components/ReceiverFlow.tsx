@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Heart, Star, Zap, Gift, MessageCircle } from "lucide-react";
 import {
@@ -80,6 +80,54 @@ function splitLetterBody(body: string | undefined) {
   ].filter(Boolean);
 }
 
+const LETTER_TITLE_DELAY_MS = 650;
+const LETTER_DEFAULT_DELAY_MS = 850;
+const LETTER_BODY_MS_PER_CHAR = 90;
+const LETTER_BODY_MIN_DELAY_MS = 1200;
+const LETTER_BODY_MAX_DELAY_MS = 4000;
+const LETTER_QUOTE_PRE_PAUSE_MS = 700;
+const LETTER_QUOTE_HOLD_MS = 2300;
+
+function clampDelay(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function getTextCharacterCount(text: string) {
+  return Array.from(text.replace(/\s/g, "")).length;
+}
+
+function getLetterBodyDelay(text: string) {
+  return clampDelay(
+    getTextCharacterCount(text) * LETTER_BODY_MS_PER_CHAR,
+    LETTER_BODY_MIN_DELAY_MS,
+    LETTER_BODY_MAX_DELAY_MS,
+  );
+}
+
+function getLetterRevealDelay(
+  currentStep: number,
+  nextStep: number,
+  bodySegments: string[],
+  quoteStep: number,
+  signoffStep: number,
+) {
+  if (nextStep === 1) return LETTER_TITLE_DELAY_MS;
+
+  if (nextStep >= 2 && nextStep < quoteStep) {
+    return getLetterBodyDelay(bodySegments[nextStep - 2] ?? "");
+  }
+
+  if (nextStep === quoteStep) {
+    return getLetterBodyDelay(bodySegments[bodySegments.length - 1] ?? "") + LETTER_QUOTE_PRE_PAUSE_MS;
+  }
+
+  if (currentStep === quoteStep && nextStep === signoffStep) {
+    return LETTER_QUOTE_HOLD_MS;
+  }
+
+  return LETTER_DEFAULT_DELAY_MS;
+}
+
 // ─── Scene icons (for decorative use) ────────────────────────────────────────
 function SceneIcon({ scene, size = 28, color = "#FFFFFF" }: { scene: Scene; size?: number; color?: string }) {
   const props = { size, color, strokeWidth: 1.5 };
@@ -127,7 +175,7 @@ export function ReceiverFlow({ onBack, onCreateGift, token }: ReceiverFlowProps)
   const themeVisual = getThemeVisual(gift?.theme);
 
   const scene = (gift?.occasion ?? "感谢") as Scene;
-  const letterBodySegments = splitLetterBody(gift?.copy.body);
+  const letterBodySegments = useMemo(() => splitLetterBody(gift?.copy.body), [gift?.copy.body]);
   const quoteRevealStep = 2 + letterBodySegments.length;
   const signoffRevealStep = quoteRevealStep + 1;
   const buttonRevealStep = signoffRevealStep + 1;
@@ -207,17 +255,19 @@ export function ReceiverFlow({ onBack, onCreateGift, token }: ReceiverFlowProps)
     if (state !== RECEIVER_STATES.letter || revealedLetterStep >= totalLetterRevealSteps) return;
 
     const nextStep = revealedLetterStep + 1;
-    const delay = nextStep === 1
-      ? 650
-      : nextStep === quoteRevealStep
-        ? 1050
-        : 850;
+    const delay = getLetterRevealDelay(
+      revealedLetterStep,
+      nextStep,
+      letterBodySegments,
+      quoteRevealStep,
+      signoffRevealStep,
+    );
     const timeout = window.setTimeout(() => {
       setRevealedLetterStep(nextStep);
     }, delay);
 
     return () => window.clearTimeout(timeout);
-  }, [quoteRevealStep, revealedLetterStep, state, totalLetterRevealSteps]);
+  }, [letterBodySegments, quoteRevealStep, revealedLetterStep, signoffRevealStep, state, totalLetterRevealSteps]);
 
   const handleOpen = () => {
     if (isOpening) return;
