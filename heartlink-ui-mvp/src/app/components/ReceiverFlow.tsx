@@ -357,7 +357,7 @@ export function ReceiverFlow({ onBack, onCreateGift, token }: ReceiverFlowProps)
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 20 }}>
                   <div style={{ width: 4, height: 4, borderRadius: "50%", background: themeVisual.footerColor, opacity: 0.5 }} />
                   <span style={{ fontFamily: "'Noto Sans SC', sans-serif", color: themeVisual.footerColor, fontSize: 11, letterSpacing: 2 }}>
-                    心意链接 · HeartLink
+                    xygift · 心意链接
                   </span>
                   <div style={{ width: 4, height: 4, borderRadius: "50%", background: themeVisual.footerColor, opacity: 0.5 }} />
                 </div>

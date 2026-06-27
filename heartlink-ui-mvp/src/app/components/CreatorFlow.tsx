@@ -449,10 +449,10 @@ export function CreatorFlow({ initialScene, onViewReceiver, startAtSceneSelectio
                 </motion.div>
                 <div style={{ textAlign: "center" }}>
                   <h1 style={{ fontFamily: "'Noto Serif SC', serif", color: "#3F342F", fontSize: 26, fontWeight: 500, letterSpacing: 5, margin: 0 }}>
-                    心意链接
+                    xygift
                   </h1>
                   <p style={{ fontFamily: "'Lora', serif", color: "#C9A66B", fontSize: 11, letterSpacing: 3, marginTop: 6, textTransform: "uppercase" }}>
-                    HeartLink
+                    心意链接
                   </p>
                 </div>
               </div>
