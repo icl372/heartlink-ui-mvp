@@ -124,6 +124,25 @@ const GENERIC_QUOTE_TERMS = [
   "美好",
   "幸福",
 ];
+const UNSUPPORTED_FACT_TERMS = [
+  "听说",
+  "一直",
+  "肯定",
+  "我知道",
+  "这段时间",
+  "准备了很久",
+  "很努力",
+];
+const VAGUE_RELATION_TERMS = [
+  "收信人与送信人",
+  "收信人",
+  "送信人",
+  "朋友",
+  "对方",
+  "TA",
+  "ta",
+  "你们",
+];
 
 function sendError(
   response: VercelResponse,
@@ -442,15 +461,28 @@ function buildGenerationMessages(
   extractedContext: ExtractedGiftContext,
   bannedTerms: string[],
 ): DeepSeekMessage[] {
+  const sourceDetailLength = getSourceDetailLength(input, extractedContext);
+  const isSparseInput = sourceDetailLength <= 30;
+  const relationTone = isVagueRelation(extractedContext.relation)
+    ? "The relationship is vague. Use a restrained, not overly intimate tone. Do not pretend to deeply know the recipient."
+    : "The relationship is available, but still do not invent shared history beyond the provided fields.";
+
   return [
     {
       role: "system",
       content: [
-        "You write warm, restrained Chinese gift-letter copy.",
+        "Your task is not to invent a moving letter. Your task is to reorganize only the user's provided information into natural Chinese words that sound like a real person.",
+        "Use only facts from originalInput and extracted. Do not add unstated experiences, personality judgments, long-term states, exam/work preparation, relationship knowledge, or private background.",
         "Use the provided extracted JSON as the primary source of truth. Do not ignore the detail field.",
         "The body must naturally mention at least one concrete detail from extracted.detail. Avoid generic thanks or empty blessing templates.",
         "The opening sentence of body should also be grounded in concrete information from extracted.event or extracted.detail. Do not start with broad scene-setting such as seeing someone busy, always being there, or generic family/friendship descriptions.",
         "Avoid a stitched feeling where the first sentence is generic and only the ending mentions a concrete detail.",
+        "Do not write claims like \"你一直很XX\", \"你这段时间很XX\", \"听说XX\", \"我知道XX\", or \"你肯定XX\" unless that exact fact is clearly present in originalInput or extracted.",
+        "Do not mention any concrete experience, action, preparation, effort, exam, work, habit, or relationship understanding that is not present in the input fields.",
+        isSparseInput
+          ? "The user provided sparse information. Keep body short: 2-3 plain sentences are enough. Do not stretch it into a full letter."
+          : "The user provided richer information. You may write a fuller body, but still stay grounded in the provided facts.",
+        relationTone,
         "Write like a real person sending a message, not like an essay. Use varied sentence lengths and plain emotional wording.",
         "Do not use parallel or paired sentence patterns such as \"A的XX和B的XX，都/也YY\". Avoid polished antithesis, slogan-like rhythm, or list-like praise.",
         "Do not end body paragraphs with abstract summary sentences such as \"谢谢你给我的每一个XX\" or \"这些瞬间让我知道XX\". Once the concrete detail lands, you may stop without forced elevation.",
@@ -459,7 +491,7 @@ function buildGenerationMessages(
         "The quote field should feel specific to this person and this exact moment, not reusable for anyone. Keep quote within 20 Chinese characters and do not write it as a second body paragraph.",
         "The quote field must be a complete emotional or feeling sentence, not a copied noun phrase from detail. It must include at least one verb or emotional word.",
         "Bad quote examples: \"你的爱藏在每个细节里\", \"海河边的世纪钟\", \"你的忙碌和付出，都让我感动\".",
-        "Good quote examples: \"你问我要不要辣，我一直记得\", \"你给我的世界比天津还要大\", \"你那天在楼下等我，我到现在都记得\".",
+        "Good quote examples: \"你问我要不要辣，我记在心里\", \"你给我的世界比天津还要大\", \"你那天在楼下等我，我到现在都记得\".",
         `Do not use these banned phrases or highly similar expressions: ${bannedTerms.join("、")}.`,
         "Return only one JSON object with these non-empty string keys:",
         "coverText, title, body, quote, buttonText, signoff, acceptedText.",
@@ -470,7 +502,8 @@ function buildGenerationMessages(
         `Set coverText to exactly one of: \"${[...SAFE_COVER_TEXT_ALLOWLIST].join("\", \"")}\".`,
         `Set acceptedText to exactly one of: \"${[...SAFE_ACCEPTED_TEXT_ALLOWLIST].join("\", \"")}\".`,
         "Put longer blessings only in body. Never use short UI text that implies red packets, cash, receiving money, collection, transfer, payment, withdrawal, benefits, rewards, a letter, or receiving a surprise.",
-        "Keep title concise, quote brief, and body limited to two or three short paragraphs.",
+        `Source detail length is ${sourceDetailLength} Chinese characters or equivalent. Match body length to this information amount instead of padding with invented emotion.`,
+        "Keep title concise, quote brief, and body limited to two or three short paragraphs when there is enough source detail.",
         "Do not include markdown fences, explanations, or extra keys.",
       ].join(" "),
     },
@@ -577,6 +610,44 @@ function buildStructuredExtractedContext(input: GenerateCopyInput): ExtractedGif
   };
 }
 
+function getProvidedSourceText(input: GenerateCopyInput, extractedContext: ExtractedGiftContext) {
+  return [
+    input.recipientName,
+    input.senderName,
+    input.occasion,
+    input.tone,
+    input.amountText,
+    input.event,
+    input.detail,
+    input.extra,
+    input.nickname,
+    input.originalMessage,
+    extractedContext.event,
+    extractedContext.detail,
+    extractedContext.relation,
+  ].filter(Boolean).join("\n");
+}
+
+function getSourceDetailLength(input: GenerateCopyInput, extractedContext: ExtractedGiftContext) {
+  const sourceText = [
+    input.event,
+    input.detail,
+    input.extra,
+    input.nickname,
+    extractedContext.event,
+    extractedContext.detail,
+  ].filter(Boolean).join("");
+
+  return Array.from(sourceText.replace(/\s/g, "")).length;
+}
+
+function isVagueRelation(relation: string) {
+  const normalizedRelation = relation.trim();
+  if (!normalizedRelation) return true;
+
+  return VAGUE_RELATION_TERMS.some(term => normalizedRelation === term || normalizedRelation.includes(term));
+}
+
 function readGeneratedCopy(payload: unknown): GenerateCopyResult | undefined {
   if (!isRecord(payload)) return undefined;
 
@@ -660,12 +731,19 @@ function isQuoteSpecificEnough(quote: string, extractedContext: ExtractedGiftCon
   return getConcreteQuoteKeywords(extractedContext).some(keyword => normalizedQuote.includes(keyword));
 }
 
+function getUnsupportedFactTerms(copy: GenerateCopyResult, input: GenerateCopyInput, extractedContext: ExtractedGiftContext) {
+  const sourceText = getProvidedSourceText(input, extractedContext);
+  const generatedText = `${copy.body}\n${copy.quote}`;
+
+  return UNSUPPORTED_FACT_TERMS.filter(term => generatedText.includes(term) && !sourceText.includes(term));
+}
+
 function buildFallbackQuote(extractedContext: ExtractedGiftContext) {
   const keyword = getConcreteQuoteKeywords(extractedContext)[0];
   const fallbackDetail = keyword || extractedContext.detail.split(/[\n，。！？!?、]/)[0]?.trim() || "这件小事";
   const shortDetail = Array.from(fallbackDetail).slice(0, 10).join("");
 
-  return `关于${shortDetail},我一直记得`;
+  return `关于${shortDetail},我记在心里`;
 }
 
 function removeBannedSentences(value: string) {
@@ -680,6 +758,29 @@ function removeBannedSentences(value: string) {
   return cleaned || value;
 }
 
+function removeUnsupportedFactSentences(value: string, input: GenerateCopyInput, extractedContext: ExtractedGiftContext) {
+  const sourceText = getProvidedSourceText(input, extractedContext);
+  const sentencePattern = /[^。！？!?；;\n]+[。！？!?；;]?|\n+/g;
+  const parts = value.match(sentencePattern) ?? [value];
+  const cleanedParts = parts.filter(part => {
+    if (/^\n+$/.test(part)) return true;
+    return !UNSUPPORTED_FACT_TERMS.some(term => part.includes(term) && !sourceText.includes(term));
+  });
+  const cleaned = cleanedParts.join("").replace(/\n{3,}/g, "\n\n").trim();
+
+  return cleaned || buildFallbackBody(extractedContext);
+}
+
+function buildFallbackBody(extractedContext: ExtractedGiftContext) {
+  const event = extractedContext.event.split(/[\n，。！？!?、]/)[0]?.trim();
+  const detail = extractedContext.detail.split(/[\n，。！？!?、]/)[0]?.trim();
+
+  return [
+    event ? `因为${event}，想把这份心意送给你。` : "想把这份心意送给你。",
+    detail ? `${detail}，我记在心里。` : "这件小事，我记在心里。",
+  ].join("\n");
+}
+
 function removeBannedCopySentences(copy: GenerateCopyResult): GenerateCopyResult {
   return {
     ...copy,
@@ -687,6 +788,21 @@ function removeBannedCopySentences(copy: GenerateCopyResult): GenerateCopyResult
     body: removeBannedSentences(copy.body),
     quote: BANNED_COPY_TERMS.some(term => copy.quote.includes(term)) ? "愿这份心意，被你温柔收下。" : copy.quote,
     signoff: removeBannedSentences(copy.signoff),
+  };
+}
+
+function removeUnsupportedFactCopy(
+  copy: GenerateCopyResult,
+  input: GenerateCopyInput,
+  extractedContext: ExtractedGiftContext,
+): GenerateCopyResult {
+  const sourceText = getProvidedSourceText(input, extractedContext);
+  const quoteHasUnsupportedTerm = UNSUPPORTED_FACT_TERMS.some(term => copy.quote.includes(term) && !sourceText.includes(term));
+
+  return {
+    ...copy,
+    body: removeUnsupportedFactSentences(copy.body, input, extractedContext),
+    quote: quoteHasUnsupportedTerm ? buildFallbackQuote(extractedContext) : copy.quote,
   };
 }
 
@@ -773,6 +889,7 @@ async function generateCopyWithRetries(
     if (
       getMatchedBannedTerms(generatedCopy).length === 0
       && isQuoteSpecificEnough(generatedCopy.quote, extractedContext)
+      && getUnsupportedFactTerms(generatedCopy, input, extractedContext).length === 0
     ) {
       return generatedCopy;
     }
@@ -780,7 +897,11 @@ async function generateCopyWithRetries(
 
   if (!latestCopy) return undefined;
 
-  const cleanedCopy = removeBannedCopySentences(latestCopy);
+  const cleanedCopy = removeUnsupportedFactCopy(
+    removeBannedCopySentences(latestCopy),
+    input,
+    extractedContext,
+  );
 
   return isQuoteSpecificEnough(cleanedCopy.quote, extractedContext)
     ? cleanedCopy
