@@ -490,6 +490,9 @@ function buildGenerationMessages(
         "Write like a real person sending a message, not like an essay. Use varied sentence lengths and plain emotional wording.",
         "Do not use parallel or paired sentence patterns such as \"A的XX和B的XX，都/也YY\". Avoid polished antithesis, slogan-like rhythm, or list-like praise.",
         "Do not end body paragraphs with abstract summary sentences such as \"谢谢你给我的每一个XX\" or \"这些瞬间让我知道XX\". Once the concrete detail lands, you may stop without forced elevation.",
+        "Do not ban abstract emotional words such as 心, 牵挂, or 温暖 everywhere. They are acceptable near the ending if concrete details have already supported them. Avoid them only when they replace concrete detail in the opening or core motivation sentence.",
+        "Quote extraction rule: if originalInput.extra is present, quote should preserve the user's real moment or dialogue from that field instead of extracting a realization sentence from the generated body.",
+        "If originalInput.extra is absent and quote is based on a sentence like \"不是因为……而是因为……\", keep the whole contrast sentence. Do not extract only the latter half, because it can change the emotional meaning out of context.",
         "The quote field must include at least one concrete noun, place, object, action, nickname, or specific phrase from extracted.event or extracted.detail.",
         "The quote field must not be a generic emotional summary made only from words like love, companionship, gratitude, cherishing, warmth, details, time, or happiness.",
         "The quote field should feel specific to this person and this exact moment, not reusable for anyone. Keep quote within 20 Chinese characters and do not write it as a second body paragraph.",
@@ -742,6 +745,25 @@ function getUnsupportedFactTerms(copy: GenerateCopyResult, input: GenerateCopyIn
   return UNSUPPORTED_FACT_TERMS.filter(term => generatedText.includes(term) && !sourceText.includes(term));
 }
 
+function getPreferredUserQuote(input: GenerateCopyInput) {
+  const extra = input.extra?.trim();
+  if (!extra) return undefined;
+
+  return extra;
+}
+
+function applyPreferredUserQuote(copy: GenerateCopyResult, input: GenerateCopyInput): GenerateCopyResult {
+  const preferredQuote = getPreferredUserQuote(input);
+  return preferredQuote ? { ...copy, quote: preferredQuote } : copy;
+}
+
+function isQuoteAcceptable(quote: string, input: GenerateCopyInput, extractedContext: ExtractedGiftContext) {
+  const preferredQuote = getPreferredUserQuote(input);
+  if (preferredQuote) return quote.trim() === preferredQuote;
+
+  return isQuoteSpecificEnough(quote, extractedContext);
+}
+
 function buildFallbackQuote(extractedContext: ExtractedGiftContext) {
   const keyword = getConcreteQuoteKeywords(extractedContext)[0];
   const fallbackDetail = keyword || extractedContext.detail.split(/[\n，。！？!?、]/)[0]?.trim() || "这件小事";
@@ -888,14 +910,15 @@ async function generateCopyWithRetries(
       throw new Error("ai-content-empty");
     }
 
-    latestCopy = generatedCopy;
+    const candidateCopy = applyPreferredUserQuote(generatedCopy, input);
+    latestCopy = candidateCopy;
 
     if (
-      getMatchedBannedTerms(generatedCopy).length === 0
-      && isQuoteSpecificEnough(generatedCopy.quote, extractedContext)
-      && getUnsupportedFactTerms(generatedCopy, input, extractedContext).length === 0
+      getMatchedBannedTerms(candidateCopy).length === 0
+      && isQuoteAcceptable(candidateCopy.quote, input, extractedContext)
+      && getUnsupportedFactTerms(candidateCopy, input, extractedContext).length === 0
     ) {
-      return generatedCopy;
+      return candidateCopy;
     }
   }
 
@@ -907,9 +930,9 @@ async function generateCopyWithRetries(
     extractedContext,
   );
 
-  return isQuoteSpecificEnough(cleanedCopy.quote, extractedContext)
+  return isQuoteAcceptable(cleanedCopy.quote, input, extractedContext)
     ? cleanedCopy
-    : { ...cleanedCopy, quote: buildFallbackQuote(extractedContext) };
+    : applyPreferredUserQuote({ ...cleanedCopy, quote: buildFallbackQuote(extractedContext) }, input);
 }
 
 export default async function handler(request: VercelRequest, response: VercelResponse) {
