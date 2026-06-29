@@ -125,7 +125,6 @@ function isGenerateCopyResult(payload: unknown): payload is GenerateCopyResult {
     "coverText",
     "title",
     "body",
-    "quote",
     "buttonText",
     "signoff",
     "acceptedText",

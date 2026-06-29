@@ -110,20 +110,6 @@ const BANNED_COPY_TERMS = [
   "感恩常在",
   "风雨同舟",
 ];
-const GENERIC_QUOTE_TERMS = [
-  "爱",
-  "陪伴",
-  "感恩",
-  "感谢",
-  "珍惜",
-  "温暖",
-  "细节",
-  "心意",
-  "时光",
-  "岁月",
-  "美好",
-  "幸福",
-];
 const UNSUPPORTED_FACT_TERMS = [
   "听说",
   "一直",
@@ -491,17 +477,9 @@ function buildGenerationMessages(
         "Do not use parallel or paired sentence patterns such as \"A的XX和B的XX，都/也YY\". Avoid polished antithesis, slogan-like rhythm, or list-like praise.",
         "Do not end body paragraphs with abstract summary sentences such as \"谢谢你给我的每一个XX\" or \"这些瞬间让我知道XX\". Once the concrete detail lands, you may stop without forced elevation.",
         "Do not ban abstract emotional words such as 心, 牵挂, or 温暖 everywhere. They are acceptable near the ending if concrete details have already supported them. Avoid them only when they replace concrete detail in the opening or core motivation sentence.",
-        "Quote extraction rule: if originalInput.extra is present, quote should preserve the user's real moment or dialogue from that field instead of extracting a realization sentence from the generated body.",
-        "If originalInput.extra is absent and quote is based on a sentence like \"不是因为……而是因为……\", keep the whole contrast sentence. Do not extract only the latter half, because it can change the emotional meaning out of context.",
-        "The quote field must include at least one concrete noun, place, object, action, nickname, or specific phrase from extracted.event or extracted.detail.",
-        "The quote field must not be a generic emotional summary made only from words like love, companionship, gratitude, cherishing, warmth, details, time, or happiness.",
-        "The quote field should feel specific to this person and this exact moment, not reusable for anyone. Keep quote within 20 Chinese characters and do not write it as a second body paragraph.",
-        "The quote field must be a complete emotional or feeling sentence, not a copied noun phrase from detail. It must include at least one verb or emotional word.",
-        "Bad quote examples: \"你的爱藏在每个细节里\", \"海河边的世纪钟\", \"你的忙碌和付出，都让我感动\".",
-        "Good quote examples: \"你问我要不要辣，我记在心里\", \"你给我的世界比天津还要大\", \"你那天在楼下等我，我到现在都记得\".",
         `Do not use these banned phrases or highly similar expressions: ${bannedTerms.join("、")}.`,
         "Return only one JSON object with these non-empty string keys:",
-        "coverText, title, body, quote, buttonText, signoff, acceptedText.",
+        "coverText, title, body, buttonText, signoff, acceptedText.",
         "This product is a HeartLink blessing-card experience, not a red-packet, cash, payment, collection, transfer, withdrawal, or reward tool.",
         "Even if the user mentions money, amounts, transfers, or red packets, express only gratitude and care; never imply platform money, receiving money, sending money, or payment.",
         `buttonText is a fixed product interaction label, not creative copy. Set buttonText exactly to \"${SAFE_BUTTON_TEXT}\".`,
@@ -510,7 +488,7 @@ function buildGenerationMessages(
         `Set acceptedText to exactly one of: \"${[...SAFE_ACCEPTED_TEXT_ALLOWLIST].join("\", \"")}\".`,
         "Put longer blessings only in body. Never use short UI text that implies red packets, cash, receiving money, collection, transfer, payment, withdrawal, benefits, rewards, a letter, or receiving a surprise.",
         `Source detail length is ${sourceDetailLength} Chinese characters or equivalent. Match body length to this information amount instead of padding with invented emotion.`,
-        "Keep title concise, quote brief, and body limited to two or three short paragraphs when there is enough source detail.",
+        "Keep title concise and body limited to two or three short paragraphs when there is enough source detail.",
         "Do not include markdown fences, explanations, or extra keys.",
       ].join(" "),
     },
@@ -661,7 +639,6 @@ function readGeneratedCopy(payload: unknown): GenerateCopyResult | undefined {
   const fields = [
     "title",
     "body",
-    "quote",
     "signoff",
   ] as const;
 
@@ -673,7 +650,7 @@ function readGeneratedCopy(payload: unknown): GenerateCopyResult | undefined {
     coverText: sanitizeCoverText(payload.coverText),
     title: payload.title as string,
     body: payload.body as string,
-    quote: payload.quote as string,
+    quote: typeof payload.quote === "string" ? payload.quote.trim() : "",
     buttonText: sanitizeButtonText(payload.buttonText),
     signoff: payload.signoff as string,
     acceptedText: sanitizeAcceptedText(payload.acceptedText),
@@ -689,87 +666,17 @@ function getMatchedBannedTerms(copy: GenerateCopyResult) {
   const text = [
     copy.title,
     copy.body,
-    copy.quote,
     copy.signoff,
   ].join("\n");
 
   return BANNED_COPY_TERMS.filter(term => text.includes(term));
 }
 
-function getConcreteQuoteKeywords(extractedContext: ExtractedGiftContext) {
-  const sourceText = `${extractedContext.event}\n${extractedContext.detail}`;
-  const matches = sourceText.match(/[\p{Script=Han}A-Za-z0-9]{2,}/gu) ?? [];
-  const keywords = new Set<string>();
-
-  for (const match of matches) {
-    const normalizedMatch = match.trim();
-    if (!normalizedMatch || GENERIC_QUOTE_TERMS.includes(normalizedMatch)) continue;
-
-    if (Array.from(normalizedMatch).length <= 4) {
-      keywords.add(normalizedMatch);
-      continue;
-    }
-
-    keywords.add(normalizedMatch);
-    for (let length = 2; length <= 4; length += 1) {
-      for (let index = 0; index <= normalizedMatch.length - length; index += 1) {
-        const keyword = normalizedMatch.slice(index, index + length);
-        if (!GENERIC_QUOTE_TERMS.includes(keyword)) {
-          keywords.add(keyword);
-        }
-      }
-    }
-  }
-
-  return [...keywords];
-}
-
-function isQuoteSpecificEnough(quote: string, extractedContext: ExtractedGiftContext) {
-  const normalizedQuote = quote.trim();
-  if (!normalizedQuote) return false;
-
-  const nonGenericText = GENERIC_QUOTE_TERMS.reduce(
-    (text, term) => text.replaceAll(term, ""),
-    normalizedQuote,
-  ).replace(/[，。！？!?、\s]/g, "");
-
-  if (Array.from(nonGenericText).length < 2) return false;
-
-  return getConcreteQuoteKeywords(extractedContext).some(keyword => normalizedQuote.includes(keyword));
-}
-
 function getUnsupportedFactTerms(copy: GenerateCopyResult, input: GenerateCopyInput, extractedContext: ExtractedGiftContext) {
   const sourceText = getProvidedSourceText(input, extractedContext);
-  const generatedText = `${copy.body}\n${copy.quote}`;
+  const generatedText = copy.body;
 
   return UNSUPPORTED_FACT_TERMS.filter(term => generatedText.includes(term) && !sourceText.includes(term));
-}
-
-function getPreferredUserQuote(input: GenerateCopyInput) {
-  const extra = input.extra?.trim();
-  if (!extra) return undefined;
-
-  return extra;
-}
-
-function applyPreferredUserQuote(copy: GenerateCopyResult, input: GenerateCopyInput): GenerateCopyResult {
-  const preferredQuote = getPreferredUserQuote(input);
-  return preferredQuote ? { ...copy, quote: preferredQuote } : copy;
-}
-
-function isQuoteAcceptable(quote: string, input: GenerateCopyInput, extractedContext: ExtractedGiftContext) {
-  const preferredQuote = getPreferredUserQuote(input);
-  if (preferredQuote) return quote.trim() === preferredQuote;
-
-  return isQuoteSpecificEnough(quote, extractedContext);
-}
-
-function buildFallbackQuote(extractedContext: ExtractedGiftContext) {
-  const keyword = getConcreteQuoteKeywords(extractedContext)[0];
-  const fallbackDetail = keyword || extractedContext.detail.split(/[\n，。！？!?、]/)[0]?.trim() || "这件小事";
-  const shortDetail = Array.from(fallbackDetail).slice(0, 10).join("");
-
-  return `关于${shortDetail},我记在心里`;
 }
 
 function removeBannedSentences(value: string) {
@@ -812,7 +719,7 @@ function removeBannedCopySentences(copy: GenerateCopyResult): GenerateCopyResult
     ...copy,
     title: BANNED_COPY_TERMS.some(term => copy.title.includes(term)) ? "把这份心意送给你" : copy.title,
     body: removeBannedSentences(copy.body),
-    quote: BANNED_COPY_TERMS.some(term => copy.quote.includes(term)) ? "愿这份心意，被你温柔收下。" : copy.quote,
+    quote: copy.quote,
     signoff: removeBannedSentences(copy.signoff),
   };
 }
@@ -822,13 +729,10 @@ function removeUnsupportedFactCopy(
   input: GenerateCopyInput,
   extractedContext: ExtractedGiftContext,
 ): GenerateCopyResult {
-  const sourceText = getProvidedSourceText(input, extractedContext);
-  const quoteHasUnsupportedTerm = UNSUPPORTED_FACT_TERMS.some(term => copy.quote.includes(term) && !sourceText.includes(term));
-
   return {
     ...copy,
     body: removeUnsupportedFactSentences(copy.body, input, extractedContext),
-    quote: quoteHasUnsupportedTerm ? buildFallbackQuote(extractedContext) : copy.quote,
+    quote: copy.quote,
   };
 }
 
@@ -910,15 +814,13 @@ async function generateCopyWithRetries(
       throw new Error("ai-content-empty");
     }
 
-    const candidateCopy = applyPreferredUserQuote(generatedCopy, input);
-    latestCopy = candidateCopy;
+    latestCopy = generatedCopy;
 
     if (
-      getMatchedBannedTerms(candidateCopy).length === 0
-      && isQuoteAcceptable(candidateCopy.quote, input, extractedContext)
-      && getUnsupportedFactTerms(candidateCopy, input, extractedContext).length === 0
+      getMatchedBannedTerms(generatedCopy).length === 0
+      && getUnsupportedFactTerms(generatedCopy, input, extractedContext).length === 0
     ) {
-      return candidateCopy;
+      return generatedCopy;
     }
   }
 
@@ -930,9 +832,7 @@ async function generateCopyWithRetries(
     extractedContext,
   );
 
-  return isQuoteAcceptable(cleanedCopy.quote, input, extractedContext)
-    ? cleanedCopy
-    : applyPreferredUserQuote({ ...cleanedCopy, quote: buildFallbackQuote(extractedContext) }, input);
+  return cleanedCopy;
 }
 
 export default async function handler(request: VercelRequest, response: VercelResponse) {

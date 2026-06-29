@@ -129,14 +129,12 @@ export function ReceiverFlow({ onBack, onCreateGift, token }: ReceiverFlowProps)
 
   const scene = (gift?.occasion ?? "感谢") as Scene;
   const letterBodySegments = useMemo(() => splitLetterBody(gift?.copy.body), [gift?.copy.body]);
-  const quoteRevealStep = 2 + letterBodySegments.length;
-  const signoffRevealStep = quoteRevealStep + 1;
+  const signoffRevealStep = 2 + letterBodySegments.length;
   const buttonRevealStep = signoffRevealStep + 1;
   const totalLetterRevealSteps = buttonRevealStep;
   const centralLetterTitle = gift?.copy.title ?? "";
   const centralLetterBodyP1 = letterBodySegments[0] ?? "";
   const centralLetterBodyP2 = letterBodySegments.slice(1).join("\n\n");
-  const centralLetterQuote = gift?.copy.quote ?? "";
   const centralLetterSignoff = gift?.copy.signoff ?? "";
   const coverText = gift?.copy.coverText ?? "";
   const receiverButtonText = gift?.copy.buttonText?.trim() || "收下心意";
@@ -420,19 +418,6 @@ export function ReceiverFlow({ onBack, onCreateGift, token }: ReceiverFlowProps)
                     </motion.p>
                   ))}
 
-                  {/* Quote block */}
-                  {revealedLetterStep >= quoteRevealStep && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.96, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }}
-                      transition={{ duration: 0.65, ease: "easeOut" }}
-                      style={{ borderLeft: `3px solid ${themeVisual.accentColor}`, background: themeVisual.accentSoftColor, borderRadius: "0 12px 12px 0", padding: "14px 18px" }}
-                    >
-                      <p style={{ fontFamily: "'Lora', serif", color: "#9B8E86", fontSize: 14, lineHeight: 1.9, fontStyle: "italic", margin: 0, letterSpacing: 0.3 }}>
-                        "{centralLetterQuote}"
-                      </p>
-                    </motion.div>
-                  )}
-
                   {/* Signoff */}
                   {revealedLetterStep >= signoffRevealStep && (
                     <motion.div
@@ -513,11 +498,6 @@ export function ReceiverFlow({ onBack, onCreateGift, token }: ReceiverFlowProps)
                   <p style={{ fontFamily: "'Noto Serif SC', serif", color: "#3F342F", fontSize: 15, lineHeight: 2.1, textIndent: "2em", letterSpacing: 0.5, margin: 0 }}>
                     {centralLetterBodyP1}
                   </p>
-                  <div style={{ borderLeft: `3px solid ${themeVisual.accentColor}`, background: themeVisual.accentSoftColor, borderRadius: "0 12px 12px 0", padding: "14px 18px" }}>
-                    <p style={{ fontFamily: "'Lora', serif", color: "#9B8E86", fontSize: 14, lineHeight: 1.9, fontStyle: "italic", margin: 0 }}>
-                      "{centralLetterQuote}"
-                    </p>
-                  </div>
                   <p style={{ fontFamily: "'Noto Serif SC', serif", color: "#3F342F", fontSize: 15, lineHeight: 2.1, textIndent: "2em", letterSpacing: 0.5, margin: 0 }}>
                     {centralLetterBodyP2}
                   </p>

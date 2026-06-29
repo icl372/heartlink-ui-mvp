@@ -76,7 +76,7 @@ function parseRequestBody(body: unknown): unknown {
 function readGiftCopy(value: unknown): GiftCopy | undefined {
   if (!isRecord(value)) return undefined;
 
-  const requiredFields = ["title", "body", "quote", "buttonText", "signoff"] as const;
+  const requiredFields = ["title", "body", "buttonText", "signoff"] as const;
 
   if (!requiredFields.every(field => typeof value[field] === "string" && value[field].trim())) {
     return undefined;
@@ -88,7 +88,7 @@ function readGiftCopy(value: unknown): GiftCopy | undefined {
     coverText: typeof value.coverText === "string" ? value.coverText.trim() : undefined,
     title: value.title.trim(),
     body: value.body.trim(),
-    quote: value.quote.trim(),
+    quote: typeof value.quote === "string" ? value.quote.trim() : "",
     buttonText: SAFE_BUTTON_TEXT,
     signoff: value.signoff.trim(),
     acceptedText: acceptedText && Array.from(acceptedText).length <= MAX_ACCEPTED_TEXT_LENGTH

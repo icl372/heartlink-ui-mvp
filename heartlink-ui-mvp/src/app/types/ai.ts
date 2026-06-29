@@ -46,7 +46,6 @@ export const GENERATE_COPY_OUTPUT_FIELDS = [
   "coverText",
   "title",
   "body",
-  "quote",
   "buttonText",
   "acceptedText",
 ] as const satisfies readonly (keyof GenerateCopyResult)[];

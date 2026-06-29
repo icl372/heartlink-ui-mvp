@@ -228,7 +228,6 @@ export function CreatorFlow({ initialScene, onViewReceiver, startAtSceneSelectio
   // Editable AI fields
   const [editTitle, setEditTitle] = useState(MOCK_GENERATED_COPY.title);
   const [editBody, setEditBody] = useState(MOCK_GENERATED_COPY.body);
-  const [editQuote, setEditQuote] = useState(MOCK_GENERATED_COPY.quote);
   const [editSignoff, setEditSignoff] = useState(MOCK_GENERATED_COPY.signoff);
   const [editButtonText, setEditButtonText] = useState(MOCK_GENERATED_COPY.buttonText);
   const [generatedCoverText, setGeneratedCoverText] = useState(MOCK_GENERATED_COPY.coverText);
@@ -283,7 +282,6 @@ export function CreatorFlow({ initialScene, onViewReceiver, startAtSceneSelectio
   const applyGeneratedCopy = (copy: GenerateCopyResult) => {
     setEditTitle(copy.title);
     setEditBody(copy.body);
-    setEditQuote(copy.quote);
     setEditSignoff(copy.signoff);
     setEditButtonText(copy.buttonText);
     setGeneratedCoverText(copy.coverText);
@@ -360,7 +358,7 @@ export function CreatorFlow({ initialScene, onViewReceiver, startAtSceneSelectio
       coverText: generatedCoverText,
       title: editTitle,
       body: editBody,
-      quote: editQuote,
+      quote: "",
       buttonText: editButtonText,
       signoff: editSignoff,
       acceptedText: generatedAcceptedText,
@@ -746,7 +744,7 @@ export function CreatorFlow({ initialScene, onViewReceiver, startAtSceneSelectio
                         文案已就绪
                       </h2>
                       <p style={{ fontFamily: "'Noto Sans SC', sans-serif", color: "#9B8E86", fontSize: 12, letterSpacing: 0.5, margin: "6px 0 0" }}>
-                        标题、正文、引用和按钮文案均可点击修改
+                        标题、正文和按钮文案均可点击修改
                       </p>
                     </div>
                     <button onClick={handleRetry}
@@ -798,23 +796,6 @@ export function CreatorFlow({ initialScene, onViewReceiver, startAtSceneSelectio
                       )}
                       inputStyle={{ ...inputStyle, fontFamily: "'Noto Serif SC', serif", fontSize: 14, lineHeight: "2", resize: "none", margin: "0 24px", width: "calc(100% - 48px)", minHeight: 100 }}
                     />
-
-                    {/* Editable quote */}
-                    <div style={{ margin: "14px 24px" }}>
-                      <EditableField
-                        value={editQuote}
-                        editing={editingField === "quote"}
-                        onEdit={() => setEditingField("quote")}
-                        onDone={() => setEditingField(null)}
-                        onChange={setEditQuote}
-                        renderDisplay={v => (
-                          <div style={{ padding: "12px 14px", borderLeft: "3px solid #C9A66B", background: "#FAF7F0", borderRadius: "0 10px 10px 0" }}>
-                            <p style={{ fontFamily: "'Lora', serif", color: "#9B8E86", fontSize: 13, lineHeight: 1.8, fontStyle: "italic", margin: 0 }}>"{v}"</p>
-                          </div>
-                        )}
-                        inputStyle={{ ...inputStyle, fontFamily: "'Lora', serif", fontSize: 13, fontStyle: "italic" }}
-                      />
-                    </div>
 
                     {/* Editable sign-off */}
                     <div style={{ padding: "4px 24px 20px", display: "flex", justifyContent: "flex-end" }}>
@@ -946,9 +927,6 @@ export function CreatorFlow({ initialScene, onViewReceiver, startAtSceneSelectio
                   <p style={{ fontFamily: "'Noto Serif SC', serif", color: "#3F342F", fontSize: 12, lineHeight: 1.9, textIndent: "2em", letterSpacing: 0.3, margin: "0 0 10px" }}>
                     {editBody.split("\n\n")[0].slice(0, 60)}…
                   </p>
-                  <div style={{ padding: "8px 10px", borderLeft: `2.5px solid ${previewTheme.accentColor}`, background: previewTheme.accentSoftColor, borderRadius: "0 8px 8px 0", margin: "0 0 12px" }}>
-                    <p style={{ fontFamily: "'Lora', serif", color: "#9B8E86", fontSize: 11, fontStyle: "italic", margin: 0 }}>"{editQuote.slice(0, 30)}…"</p>
-                  </div>
                   <div style={{ width: "100%", padding: "11px 0", borderRadius: 99, background: previewTheme.primaryColor, textAlign: "center" }}>
                     <span style={{ fontFamily: "'Noto Sans SC', sans-serif", color: "#FFFFFF", fontSize: 12, letterSpacing: 2 }}>{editButtonText}</span>
                   </div>
