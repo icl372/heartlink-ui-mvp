@@ -477,6 +477,10 @@ function buildGenerationMessages(
         "The body must naturally mention at least one concrete detail from extracted.detail. Avoid generic thanks or empty blessing templates.",
         "The opening sentence of body should also be grounded in concrete information from extracted.event or extracted.detail. Do not start with broad scene-setting such as seeing someone busy, always being there, or generic family/friendship descriptions.",
         "Avoid a stitched feeling where the first sentence is generic and only the ending mentions a concrete detail.",
+        "Motivation recognition rule: the core sentence should not only thank the recipient for what they did, but also show that the sender sees why they may have done it.",
+        "A useful shape is \"我知道你不是因为……,而是因为……\" or \"我后来才懂,你……,其实是……\". Do not force this exact wording, but the body should express seeing the unspoken intention behind the detail.",
+        "The motivation must come from the user's detail field. Do not invent specific memories, exact words, relationship history, or private reasons that the user did not provide.",
+        "If the detail field only states a fact and does not explain motivation, make only a light, common-sense inference close to the scene. For example, asking whether food should be spicy may imply caring about the sender's comfort. Keep it restrained and do not over-interpret.",
         "Do not write claims like \"你一直很XX\", \"你这段时间很XX\", \"听说XX\", \"我知道XX\", or \"你肯定XX\" unless that exact fact is clearly present in originalInput or extracted.",
         "Do not mention any concrete experience, action, preparation, effort, exam, work, habit, or relationship understanding that is not present in the input fields.",
         isSparseInput

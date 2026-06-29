@@ -592,9 +592,9 @@ export function CreatorFlow({ initialScene, onViewReceiver, startAtSceneSelectio
                 )}
               </FormField>
 
-              <FormField label="关于TA,你最想提的一个细节" required hint={`${detailText.length} 字 · 建议写具体一点`}>
+              <FormField label="关于TA,你最想提的一个细节" required hint={`${detailText.length} 字 · 不只是TA做了什么,更想知道——你觉得TA这么做,是因为什么?`}>
                 <textarea value={detailText} onChange={e => handleStructuredFieldChange(setDetailText, e.target.value)}
-                  placeholder="例如：他每次点外卖都先问我要不要辣"
+                  placeholder="例如：他每次点外卖都先问我要不要辣——我知道这不是随口问,是他记得我去年说怕辣却硬吃完了那次"
                   rows={4} style={{ ...inputStyle, resize: "none", lineHeight: 1.9 }} />
                 {structuredPromptField === "detail" && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "10px 12px", borderRadius: 14, background: "#FFF8ED", border: "1px solid #EADCC8", marginTop: 8 }}>
