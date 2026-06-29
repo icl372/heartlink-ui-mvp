@@ -452,6 +452,9 @@ function buildGenerationMessages(
   const relationTone = isVagueRelation(extractedContext.relation)
     ? "The relationship is vague. Use a restrained, not overly intimate tone. Do not pretend to deeply know the recipient."
     : "The relationship is available, but still do not invent shared history beyond the provided fields.";
+  const apologyToneRule = input.occasion === "道歉"
+    ? "Apology tone rule: in apology messages, any sentence that infers the recipient's feelings or mental state must start with \"我感觉\". Do not make judgmental claims such as \"你其实需要我在乎\"; write a humbler line such as \"我感觉你那天其实挺需要我在乎的\". This rule only applies to apology messages."
+    : "";
 
   return [
     {
@@ -473,6 +476,7 @@ function buildGenerationMessages(
           ? "The user provided sparse information. Keep body short: 2-3 plain sentences are enough. Do not stretch it into a full letter."
           : "The user provided richer information. You may write a fuller body, but still stay grounded in the provided facts.",
         relationTone,
+        apologyToneRule,
         "Write like a real person sending a message, not like an essay. Use varied sentence lengths and plain emotional wording.",
         "Do not use parallel or paired sentence patterns such as \"A的XX和B的XX，都/也YY\". Avoid polished antithesis, slogan-like rhythm, or list-like praise.",
         "Do not end body paragraphs with abstract summary sentences such as \"谢谢你给我的每一个XX\" or \"这些瞬间让我知道XX\". Once the concrete detail lands, you may stop without forced elevation.",
