@@ -1,6 +1,6 @@
 import type { GiftOccasion, GiftTone } from "./gift";
 
-export type GiftRelationship = "父母" | "伴侣" | "朋友" | "子女" | "师生" | "同事" | "其他";
+export type GiftRelationship = "妈妈" | "爸爸" | "长辈" | "伴侣" | "朋友" | "孩子" | "老师" | "同事" | "其他";
 
 export interface GenerateCopyInput {
   recipientName: string;

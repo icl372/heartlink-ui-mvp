@@ -58,7 +58,7 @@ const SUPPORTED_DEEPSEEK_MODELS = new Set([
 ]);
 const PROVIDER_CALL_TIMEOUT_MS = 25_000;
 const MAX_GENERATION_RETRIES = 2;
-const RELATIONSHIP_OPTIONS = new Set(["父母", "伴侣", "朋友", "子女", "师生", "同事", "其他"]);
+const RELATIONSHIP_OPTIONS = new Set(["妈妈", "爸爸", "长辈", "伴侣", "朋友", "孩子", "老师", "同事", "其他"]);
 const DISALLOWED_BODY_OPENING_CONNECTORS = ["但", "但是", "可是", "不过", "所以", "然而"];
 const DISALLOWED_BODY_OPENING_CONNECTOR_PATTERN = /^(但是|可是|不过(?!分)|所以|然而|但(?!愿))/;
 const SUPABASE_RATE_LIMIT_TABLE_PATH = "/rest/v1/ai_usage_events";
@@ -454,15 +454,19 @@ function buildExtractionMessages(input: GenerateCopyInput): DeepSeekMessage[] {
 
 function getRelationshipToneRule(relationship: GenerateCopyInput["relationship"]) {
   switch (relationship) {
-    case "父母":
-      return "Relationship tone rule: the recipient is a parent. Avoid romantic or partner-like wording such as 宝贝, 吻, 想亲你, or overly flirtatious intimacy. Words such as 惦记, 操心, 牵挂, 心疼, and 放心 are allowed. Keep it warm but not overly mushy.";
+    case "妈妈":
+    case "爸爸":
+      return "Relationship tone rule: the recipient is the sender's parent. Avoid romantic or partner-like wording such as 宝贝, 吻, 想亲你, or overly flirtatious intimacy. Words such as 惦记, 操心, 牵挂, 心疼, and 放心 are allowed. Keep it warm but not overly mushy.";
+    case "长辈":
+      return "Relationship tone rule: the recipient is an elder. Keep the tone respectful, warm, and restrained. Avoid romantic wording and avoid assuming a parent-child dynamic unless the user provided it.";
     case "伴侣":
       return "Relationship tone rule: the recipient is a partner. More direct intimacy and affection are allowed, but still stay grounded in the user's provided details and avoid cliché romance.";
-    case "子女":
+    case "孩子":
       return "Relationship tone rule: the recipient is a child. Keep the tone protective and age-aware. Avoid adult romantic wording or making the child sound like a peer partner.";
-    case "朋友":
+    case "老师":
+      return "Relationship tone rule: the recipient is a teacher or mentor. Keep the tone respectful, grateful, and measured. Do not use partner-like intimacy.";
     case "同事":
-    case "师生":
+    case "朋友":
       return "Relationship tone rule: keep the existing restrained tone. Do not add extra intimacy beyond the provided facts.";
     default:
       return "";

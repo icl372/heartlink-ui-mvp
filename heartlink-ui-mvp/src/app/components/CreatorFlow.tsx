@@ -51,12 +51,14 @@ interface CreatorFlowProps {
 
 const DETAIL_SOFT_PROMPT_TEXT = "再具体一点?比如发生在什么时候、什么地方、TA做了什么。";
 const VAGUE_DETAIL_KEYWORDS = ["爱", "陪伴", "辛苦", "付出", "谢谢", "感激", "照顾"];
-const RELATIONSHIP_OPTIONS: Relationship[] = ["父母", "伴侣", "朋友", "子女", "师生", "同事", "其他"];
+const RELATIONSHIP_OPTIONS: Relationship[] = ["妈妈", "爸爸", "长辈", "伴侣", "朋友", "孩子", "老师", "同事", "其他"];
 const RELATIONSHIP_SUGGESTION_RULES: Array<{ relationship: Relationship; keywords: string[] }> = [
-  { relationship: "父母", keywords: ["妈妈", "爸爸", "母亲", "父亲", "爹", "娘"] },
+  { relationship: "妈妈", keywords: ["妈妈", "母亲", "娘"] },
+  { relationship: "爸爸", keywords: ["爸爸", "父亲", "爹"] },
+  { relationship: "长辈", keywords: ["爷爷", "奶奶", "外公", "外婆", "姥姥", "姥爷", "叔叔", "阿姨", "伯伯", "舅舅", "姑姑", "姨妈"] },
   { relationship: "伴侣", keywords: ["老公", "老婆", "男友", "女友", "对象", "亲爱的"] },
-  { relationship: "子女", keywords: ["儿子", "女儿", "孩子"] },
-  { relationship: "师生", keywords: ["老师", "学生", "导师"] },
+  { relationship: "孩子", keywords: ["儿子", "女儿", "孩子"] },
+  { relationship: "老师", keywords: ["老师", "导师"] },
   { relationship: "同事", keywords: ["同事", "领导", "老板"] },
 ];
 const CONCRETE_DETAIL_PATTERNS = [
@@ -611,7 +613,7 @@ export function CreatorFlow({ initialScene, onViewReceiver, startAtSceneSelectio
                   style={inputStyle} />
               </FormField>
 
-              <FormField label="你们的关系" optional>
+              <FormField label="TA 是你的谁" optional>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                   {RELATIONSHIP_OPTIONS.map(option => {
                     const active = relationship === option;

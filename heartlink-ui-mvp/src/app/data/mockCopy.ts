@@ -20,7 +20,7 @@ export const MOCK_GIFT_INPUT: GenerateCopyInput = {
   occasion: "感谢",
   tone: "真诚",
   amountText: "200",
-  relationship: "父母",
+  relationship: "妈妈",
   event: "妈妈给我转了 200 元",
   detail: "她总是在我需要支持的时候，第一时间给我回应。",
   extra: "",
