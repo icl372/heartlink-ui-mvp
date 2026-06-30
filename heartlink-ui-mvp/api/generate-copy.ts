@@ -59,6 +59,8 @@ const SUPPORTED_DEEPSEEK_MODELS = new Set([
 const PROVIDER_CALL_TIMEOUT_MS = 25_000;
 const MAX_GENERATION_RETRIES = 2;
 const RELATIONSHIP_OPTIONS = new Set(["父母", "伴侣", "朋友", "子女", "师生", "同事", "其他"]);
+const DISALLOWED_BODY_OPENING_CONNECTORS = ["但", "但是", "可是", "不过", "所以", "然而"];
+const DISALLOWED_BODY_OPENING_CONNECTOR_PATTERN = /^(但是|可是|不过(?!分)|所以|然而|但(?!愿))/;
 const SUPABASE_RATE_LIMIT_TABLE_PATH = "/rest/v1/ai_usage_events";
 const RATE_LIMIT_ROUTE = "generate-copy";
 const DEFAULT_RATE_LIMIT_WINDOW_MINUTES = 10;
@@ -491,6 +493,7 @@ function buildGenerationMessages(
         "Use the provided extracted JSON as the primary source of truth. Do not ignore the detail field.",
         "The body must naturally mention at least one concrete detail from extracted.detail. Avoid generic thanks or empty blessing templates.",
         "The opening sentence of body should also be grounded in concrete information from extracted.event or extracted.detail. Do not start with broad scene-setting such as seeing someone busy, always being there, or generic family/friendship descriptions.",
+        "Body opening rule: the first sentence of body must not start with transitional connectors such as 但, 但是, 可是, 不过, 所以, or 然而. The event field is background context for understanding the occasion and tone, not a sentence to quote directly. Reorganize it into an independent and complete opening sentence that does not assume prior context.",
         "Avoid a stitched feeling where the first sentence is generic and only the ending mentions a concrete detail.",
         "Motivation recognition rule: the core sentence should not only thank the recipient for what they did, but also show that the sender sees why they may have done it.",
         "A useful shape is \"我知道你不是因为……,而是因为……\" or \"我后来才懂,你……,其实是……\". Do not force this exact wording, but the body should express seeing the unspoken intention behind the detail.",
@@ -711,6 +714,28 @@ function getUnsupportedFactTerms(copy: GenerateCopyResult, input: GenerateCopyIn
   return UNSUPPORTED_FACT_TERMS.filter(term => generatedText.includes(term) && !sourceText.includes(term));
 }
 
+function startsWithDisallowedBodyConnector(value: string) {
+  const opening = value.trimStart().replace(/^["“‘'（(【\[]+/, "");
+
+  return DISALLOWED_BODY_OPENING_CONNECTOR_PATTERN.test(opening);
+}
+
+function removeDisallowedBodyOpeningConnector(value: string) {
+  const leadingWhitespace = value.match(/^\s*/)?.[0] ?? "";
+  const body = value.slice(leadingWhitespace.length);
+  const openingPunctuation = body.match(/^["“‘'（(【\[]*/)?.[0] ?? "";
+  const bodyAfterPunctuation = body.slice(openingPunctuation.length);
+  const connector = bodyAfterPunctuation.match(DISALLOWED_BODY_OPENING_CONNECTOR_PATTERN)?.[0];
+
+  if (!connector) return value;
+
+  const cleaned = bodyAfterPunctuation
+    .slice(connector.length)
+    .replace(/^[\s，,。.!！?？、；;]+/, "");
+
+  return `${leadingWhitespace}${openingPunctuation}${cleaned}`.trimStart() || value;
+}
+
 function removeBannedSentences(value: string) {
   const sentencePattern = /[^。！？!?；;\n]+[。！？!?；;]?|\n+/g;
   const parts = value.match(sentencePattern) ?? [value];
@@ -851,6 +876,7 @@ async function generateCopyWithRetries(
     if (
       getMatchedBannedTerms(generatedCopy).length === 0
       && getUnsupportedFactTerms(generatedCopy, input, extractedContext).length === 0
+      && !startsWithDisallowedBodyConnector(generatedCopy.body)
     ) {
       return generatedCopy;
     }
@@ -864,7 +890,10 @@ async function generateCopyWithRetries(
     extractedContext,
   );
 
-  return cleanedCopy;
+  return {
+    ...cleanedCopy,
+    body: removeDisallowedBodyOpeningConnector(cleanedCopy.body),
+  };
 }
 
 export default async function handler(request: VercelRequest, response: VercelResponse) {
