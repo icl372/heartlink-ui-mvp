@@ -33,6 +33,7 @@ const MAX_TOKEN_INSERT_ATTEMPTS = 3;
 const MAX_ACCEPTED_TEXT_LENGTH = 12;
 const SERVER_TOKEN_LENGTH = 16;
 const SERVER_TOKEN_ALPHABET = "23456789abcdefghijkmnopqrstuvwxyz";
+const SIGNOFF_QUOTE_PREFIX = "__signoff__:";
 const GIFT_OCCASIONS = new Set(["感谢", "祝福", "道歉", "鼓励", "小心意"]);
 const GIFT_TONES = new Set(["真诚", "温柔", "可爱", "克制", "正式", "诗意"]);
 const GIFT_THEMES = new Set<GiftTheme>(["温柔信纸", "复古收据", "诗意卡片", "简约便签"]);
@@ -174,7 +175,7 @@ function buildSupabaseRecord(input: CreateGiftInput, token: string, now: string)
     cover_text: input.copy.coverText || null,
     title: input.copy.title,
     body: input.copy.body,
-    quote: input.copy.quote,
+    quote: `${SIGNOFF_QUOTE_PREFIX}${input.copy.signoff}`,
     button_text: SAFE_BUTTON_TEXT,
     accepted_text: input.copy.acceptedText || SAFE_ACCEPTED_TEXT,
     theme: input.theme,

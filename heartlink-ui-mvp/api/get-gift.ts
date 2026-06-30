@@ -18,6 +18,7 @@ type VercelResponse = {
 
 const SUPABASE_TABLE_PATH = "/rest/v1/gifts";
 const GIFT_TOKEN_PATTERN = /^[a-z0-9_-]{10,16}$/;
+const SIGNOFF_QUOTE_PREFIX = "__signoff__:";
 const SAFE_BUTTON_TEXT = "收下心意";
 const SAFE_COVER_TEXT = "有一份心意送给你";
 const SAFE_ACCEPTED_TEXT = "这份心意已被珍藏";
@@ -95,6 +96,10 @@ function isGiftRecord(value: unknown): value is GiftRecord {
 
 function mapRecordToGift(record: GiftRecord): Gift {
   const acceptedAt = record.accepted_at ?? null;
+  const storedSignoff = record.quote.startsWith(SIGNOFF_QUOTE_PREFIX)
+    ? record.quote.slice(SIGNOFF_QUOTE_PREFIX.length).trim()
+    : "";
+  const displaySignoff = storedSignoff || record.sender_name || "一位关心你的人";
 
   return {
     id: record.id,
@@ -111,10 +116,10 @@ function mapRecordToGift(record: GiftRecord): Gift {
       coverText: record.cover_text?.trim() || SAFE_COVER_TEXT,
       title: record.title,
       body: record.body,
-      quote: record.quote,
+      quote: storedSignoff ? "" : record.quote,
       buttonText: SAFE_BUTTON_TEXT,
       // The current table has no signoff column; keep the receiver signature coherent.
-      signoff: record.sender_name || "一位关心你的人",
+      signoff: displaySignoff,
       acceptedText: record.accepted_text?.trim() || SAFE_ACCEPTED_TEXT,
     },
     status: acceptedAt ? "accepted" : "link-created",
