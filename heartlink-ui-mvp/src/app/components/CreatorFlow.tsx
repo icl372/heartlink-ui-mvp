@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Heart, Star, MessageCircle, Zap, Gift,
@@ -26,6 +26,7 @@ import type {
   GenerateCopyInput,
   GenerateCopyResult,
   GiftOccasion,
+  GiftRelationship,
   GiftTheme,
   GiftTone,
 } from "../types";
@@ -33,6 +34,7 @@ import type {
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Scene = GiftOccasion;
 type Style = GiftTheme;
+type Relationship = GiftRelationship;
 type CreateGiftStatus = "idle" | "creating" | "failed" | "network-error";
 type Tone = GiftTone;
 type AiStatus = AiGenerationStatus;
@@ -49,6 +51,14 @@ interface CreatorFlowProps {
 
 const DETAIL_SOFT_PROMPT_TEXT = "再具体一点?比如发生在什么时候、什么地方、TA做了什么。";
 const VAGUE_DETAIL_KEYWORDS = ["爱", "陪伴", "辛苦", "付出", "谢谢", "感激", "照顾"];
+const RELATIONSHIP_OPTIONS: Relationship[] = ["父母", "伴侣", "朋友", "子女", "师生", "同事", "其他"];
+const RELATIONSHIP_SUGGESTION_RULES: Array<{ relationship: Relationship; keywords: string[] }> = [
+  { relationship: "父母", keywords: ["妈妈", "爸爸", "母亲", "父亲", "爹", "娘"] },
+  { relationship: "伴侣", keywords: ["老公", "老婆", "男友", "女友", "对象", "亲爱的"] },
+  { relationship: "子女", keywords: ["儿子", "女儿", "孩子"] },
+  { relationship: "师生", keywords: ["老师", "学生", "导师"] },
+  { relationship: "同事", keywords: ["同事", "领导", "老板"] },
+];
 const CONCRETE_DETAIL_PATTERNS = [
   /\d|[一二三四五六七八九十半两][点年月日号天周星期个月次岁]/,
   /今天|昨天|明天|去年|今年|那天|晚上|早上|中午|凌晨|周末|生日|过年|春节|考试|住院|加班|下雨|生病|搬家|毕业|旅行|车站|医院|学校|公司|家里|厨房|门口|路上|机场|地铁|公交|餐厅|宿舍|办公室/,
@@ -67,6 +77,17 @@ function isMessageSpecificEnough(value: string) {
   if (!hasVagueKeyword) return true;
 
   return CONCRETE_DETAIL_PATTERNS.some(pattern => pattern.test(normalized));
+}
+
+function inferRelationshipFromRecipient(value: string): Relationship | null {
+  const normalized = value.trim();
+  if (!normalized) return null;
+
+  const matchedRule = RELATIONSHIP_SUGGESTION_RULES.find(rule =>
+    rule.keywords.some(keyword => normalized.includes(keyword)),
+  );
+
+  return matchedRule?.relationship ?? null;
 }
 
 async function copyTextToClipboard(text: string) {
@@ -214,6 +235,8 @@ export function CreatorFlow({ initialScene, onViewReceiver, startAtSceneSelectio
   );
   const [scene, setScene] = useState<Scene>(initialScene ?? DEFAULT_CREATE_GIFT_INPUT.occasion);
   const [recipient, setRecipient] = useState(DEFAULT_CREATE_GIFT_INPUT.recipientName);
+  const [relationship, setRelationship] = useState<Relationship | null>(DEFAULT_CREATE_GIFT_INPUT.relationship ?? null);
+  const [userTouchedRelationship, setUserTouchedRelationship] = useState(false);
   const [sender, setSender] = useState(DEFAULT_CREATE_GIFT_INPUT.senderName);
   const [eventText, setEventText] = useState(DEFAULT_CREATE_GIFT_INPUT.event ?? "");
   const [detailText, setDetailText] = useState(DEFAULT_CREATE_GIFT_INPUT.detail ?? "");
@@ -245,6 +268,16 @@ export function CreatorFlow({ initialScene, onViewReceiver, startAtSceneSelectio
   const previewLink = createGiftPreviewUrl(generatedToken || MOCK_PREVIEW_TOKEN);
   const previewTheme = getThemeVisual(selectedStyle);
 
+  useEffect(() => {
+    if (userTouchedRelationship) return;
+
+    const timer = window.setTimeout(() => {
+      setRelationship(inferRelationshipFromRecipient(recipient));
+    }, 300);
+
+    return () => window.clearTimeout(timer);
+  }, [recipient, userTouchedRelationship]);
+
   // Go back, clamped to 0
   const goBack = () => {
     setStep(currentStep => {
@@ -266,12 +299,25 @@ export function CreatorFlow({ initialScene, onViewReceiver, startAtSceneSelectio
     ].filter(Boolean).join("\n");
   };
 
+  const handleRecipientBlur = () => {
+    if (userTouchedRelationship) return;
+    setRelationship(inferRelationshipFromRecipient(recipient));
+  };
+
+  const handleRelationshipSelect = (nextRelationship: Relationship) => {
+    setUserTouchedRelationship(true);
+    setRelationship(currentRelationship =>
+      currentRelationship === nextRelationship ? null : nextRelationship,
+    );
+  };
+
   const buildGenerateCopyInput = (): GenerateCopyInput => ({
     recipientName: recipient,
     senderName: sender,
     occasion: scene,
     tone,
     amountText: amount.trim() ? amount : undefined,
+    relationship,
     event: eventText,
     detail: detailText,
     extra: extraText.trim() ? extraText : undefined,
@@ -561,8 +607,37 @@ export function CreatorFlow({ initialScene, onViewReceiver, startAtSceneSelectio
 
               {/* Fields */}
               <FormField label="收信人" required>
-                <input value={recipient} onChange={e => setRecipient(e.target.value)} placeholder="例如：妈妈 / 朋友 / 小林"
+                <input value={recipient} onChange={e => setRecipient(e.target.value)} onBlur={handleRecipientBlur} placeholder="例如：妈妈 / 朋友 / 小林"
                   style={inputStyle} />
+              </FormField>
+
+              <FormField label="你们的关系" optional>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {RELATIONSHIP_OPTIONS.map(option => {
+                    const active = relationship === option;
+                    return (
+                      <button
+                        key={option}
+                        type="button"
+                        onClick={() => handleRelationshipSelect(option)}
+                        style={{
+                          padding: "8px 14px",
+                          borderRadius: 999,
+                          border: `1.5px solid ${active ? "#473B35" : "#EAE2D8"}`,
+                          background: active ? "#473B35" : "#FFFFFF",
+                          color: active ? "#FFFFFF" : "#7F6F66",
+                          fontFamily: "'Noto Sans SC', sans-serif",
+                          fontSize: 12,
+                          letterSpacing: 0.5,
+                          cursor: "pointer",
+                          transition: "all 0.15s",
+                        }}
+                      >
+                        {option}
+                      </button>
+                    );
+                  })}
+                </div>
               </FormField>
 
               <FormField label="署名">
@@ -1024,12 +1099,13 @@ export function CreatorFlow({ initialScene, onViewReceiver, startAtSceneSelectio
 }
 
 // ─── Helper: FormField ─────────────────────────────────────────────────────────
-function FormField({ label, children, required, hint }: { label: string; children: React.ReactNode; required?: boolean; hint?: string }) {
+function FormField({ label, children, required, optional, hint }: { label: string; children: React.ReactNode; required?: boolean; optional?: boolean; hint?: string }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
         <label style={{ fontFamily: "'Noto Sans SC', sans-serif", color: "#3F342F", fontSize: 13, letterSpacing: 0.5, fontWeight: 500 }}>
           {label}{required && <span style={{ color: "#C9A66B", marginLeft: 2 }}>*</span>}
+          {optional && <span style={{ color: "#B8A89E", marginLeft: 6, fontSize: 11, fontWeight: 400 }}>选填</span>}
         </label>
         {hint && <span style={{ fontFamily: "'Noto Sans SC', sans-serif", color: "#C5BAB2", fontSize: 11, letterSpacing: 0.3 }}>{hint}</span>}
       </div>

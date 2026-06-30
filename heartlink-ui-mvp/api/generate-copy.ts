@@ -58,6 +58,7 @@ const SUPPORTED_DEEPSEEK_MODELS = new Set([
 ]);
 const PROVIDER_CALL_TIMEOUT_MS = 25_000;
 const MAX_GENERATION_RETRIES = 2;
+const RELATIONSHIP_OPTIONS = new Set(["父母", "伴侣", "朋友", "子女", "师生", "同事", "其他"]);
 const SUPABASE_RATE_LIMIT_TABLE_PATH = "/rest/v1/ai_usage_events";
 const RATE_LIMIT_ROUTE = "generate-copy";
 const DEFAULT_RATE_LIMIT_WINDOW_MINUTES = 10;
@@ -191,6 +192,7 @@ function readGenerateCopyInput(body: unknown): GenerateCopyInput | undefined {
     || typeof value.tone !== "string"
     || (value.originalMessage !== undefined && typeof value.originalMessage !== "string")
     || (value.amountText !== undefined && typeof value.amountText !== "string")
+    || (value.relationship !== undefined && value.relationship !== null && typeof value.relationship !== "string")
     || (value.event !== undefined && typeof value.event !== "string")
     || (value.detail !== undefined && typeof value.detail !== "string")
     || (value.extra !== undefined && typeof value.extra !== "string")
@@ -201,6 +203,10 @@ function readGenerateCopyInput(body: unknown): GenerateCopyInput | undefined {
 
   const event = typeof value.event === "string" ? value.event.trim() : undefined;
   const detail = typeof value.detail === "string" ? value.detail.trim() : undefined;
+  const rawRelationship = typeof value.relationship === "string" ? value.relationship.trim() : "";
+  const relationship = RELATIONSHIP_OPTIONS.has(rawRelationship)
+    ? rawRelationship as GenerateCopyInput["relationship"]
+    : null;
   const extra = normalizeOptionalContext(value.extra);
   const nickname = normalizeOptionalContext(value.nickname);
   const originalMessage = typeof value.originalMessage === "string"
@@ -218,6 +224,7 @@ function readGenerateCopyInput(body: unknown): GenerateCopyInput | undefined {
     occasion: value.occasion as GenerateCopyInput["occasion"],
     tone: value.tone as GenerateCopyInput["tone"],
     amountText: typeof value.amountText === "string" ? value.amountText.trim() : undefined,
+    relationship,
     event,
     detail,
     extra,
@@ -431,6 +438,7 @@ function buildExtractionMessages(input: GenerateCopyInput): DeepSeekMessage[] {
         senderName: input.senderName,
         occasion: input.occasion,
         tone: input.tone,
+        relationship: input.relationship || undefined,
         amountText: input.amountText,
         event: input.event,
         detail: input.detail,
@@ -440,6 +448,23 @@ function buildExtractionMessages(input: GenerateCopyInput): DeepSeekMessage[] {
       }),
     },
   ];
+}
+
+function getRelationshipToneRule(relationship: GenerateCopyInput["relationship"]) {
+  switch (relationship) {
+    case "父母":
+      return "Relationship tone rule: the recipient is a parent. Avoid romantic or partner-like wording such as 宝贝, 吻, 想亲你, or overly flirtatious intimacy. Words such as 惦记, 操心, 牵挂, 心疼, and 放心 are allowed. Keep it warm but not overly mushy.";
+    case "伴侣":
+      return "Relationship tone rule: the recipient is a partner. More direct intimacy and affection are allowed, but still stay grounded in the user's provided details and avoid cliché romance.";
+    case "子女":
+      return "Relationship tone rule: the recipient is a child. Keep the tone protective and age-aware. Avoid adult romantic wording or making the child sound like a peer partner.";
+    case "朋友":
+    case "同事":
+    case "师生":
+      return "Relationship tone rule: keep the existing restrained tone. Do not add extra intimacy beyond the provided facts.";
+    default:
+      return "";
+  }
 }
 
 function buildGenerationMessages(
@@ -452,6 +477,7 @@ function buildGenerationMessages(
   const relationTone = isVagueRelation(extractedContext.relation)
     ? "The relationship is vague. Use a restrained, not overly intimate tone. Do not pretend to deeply know the recipient."
     : "The relationship is available, but still do not invent shared history beyond the provided fields.";
+  const relationshipToneRule = getRelationshipToneRule(input.relationship);
   const apologyToneRule = input.occasion === "道歉"
     ? "Apology tone rule: in apology messages, any sentence that infers the recipient's feelings or mental state must start with \"我感觉\". Do not make judgmental claims such as \"你其实需要我在乎\"; write a humbler line such as \"我感觉你那天其实挺需要我在乎的\". This rule only applies to apology messages."
     : "";
@@ -476,6 +502,7 @@ function buildGenerationMessages(
           ? "The user provided sparse information. Keep body short: 2-3 plain sentences are enough. Do not stretch it into a full letter."
           : "The user provided richer information. You may write a fuller body, but still stay grounded in the provided facts.",
         relationTone,
+        relationshipToneRule,
         apologyToneRule,
         "Write like a real person sending a message, not like an essay. Use varied sentence lengths and plain emotional wording.",
         "Do not use parallel or paired sentence patterns such as \"A的XX和B的XX，都/也YY\". Avoid polished antithesis, slogan-like rhythm, or list-like praise.",
@@ -504,6 +531,7 @@ function buildGenerationMessages(
           senderName: input.senderName,
           occasion: input.occasion,
           tone: input.tone,
+          relationship: input.relationship || undefined,
           amountText: input.amountText,
           event: input.event,
           detail: input.detail,

@@ -1,11 +1,14 @@
 import type { GiftOccasion, GiftTone } from "./gift";
 
+export type GiftRelationship = "父母" | "伴侣" | "朋友" | "子女" | "师生" | "同事" | "其他";
+
 export interface GenerateCopyInput {
   recipientName: string;
   senderName: string;
   occasion: GiftOccasion;
   tone: GiftTone;
   amountText?: string;
+  relationship?: GiftRelationship | null;
   event?: string;
   detail?: string;
   extra?: string;
@@ -29,6 +32,7 @@ export const GENERATE_COPY_INPUT_FIELDS = [
   "occasion",
   "tone",
   "amountText",
+  "relationship",
   "event",
   "detail",
   "extra",
