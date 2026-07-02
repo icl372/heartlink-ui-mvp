@@ -1,5 +1,23 @@
 # TODO.md｜HeartLink MVP 正式开发排期
 
+## 当前新链路完成记录
+
+当前心意链接定位已调整为：帮用户把已有的心意包装好，做成一个能送出去的东西。
+
+已完成并进入 QA 的新链路：
+
+1. 创建端输入界面已从“填写信息 / AI 生成文案”调整为“准备这份心意 / 帮我包装这份心意”。
+2. `HeartIntent` / `GiftIntent` 风格的结构化心意材料已接入，包含 `recipientName`、`recipientRole`、`occasion`、`story`、`intentTag`、`coreMessage`、`tone`、`senderName`、`originalInput`、`noInventFacts`。
+3. AI / mock 任务已从“生成祝福文案”调整为“包装用户已有心意”，并要求不乱编用户没提供的事实。
+4. 结果页已从“AI 文案结果”调整为“心意已包装好”的心意成品结果。
+
+后续待做：
+
+1. 真实 AI 接入 QA 继续按心意包装规则回归。
+2. 更多包装形式可以作为后续独立任务，不在当前 MVP 主链路内扩张。
+3. 主题 / 风格映射如继续调整，必须保持统一的心意便签系统。
+4. 发布前继续做命名、metadata、正式域名与隐私说明检查。
+
 ## 全局规则
 
 1. 每次开发前必须先读 `C:\Users\lenovo\Documents\New project1\docs\PRD.md`、`C:\Users\lenovo\Documents\New project1\docs\DESIGN.md`、`C:\Users\lenovo\Documents\New project1\docs\ARCHITECTURE.md`。

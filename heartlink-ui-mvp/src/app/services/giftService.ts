@@ -171,6 +171,10 @@ async function generateCopyFromOwnedApi(input: GenerateCopyInput): Promise<Gener
 
 function getGenerateCopyTextForValidation(input: GenerateCopyInput) {
   return [
+    input.heartIntent?.story,
+    input.heartIntent?.coreMessage,
+    input.story,
+    input.coreMessage,
     input.event,
     input.detail,
     input.extra,
@@ -178,6 +182,91 @@ function getGenerateCopyTextForValidation(input: GenerateCopyInput) {
     input.originalMessage,
   ].filter((value): value is string => typeof value === "string" && Boolean(value.trim()))
     .join("\n");
+}
+
+function getMockHeartIntentSource(input: GenerateCopyInput) {
+  const recipientName = input.heartIntent?.recipientName || input.recipientName || "TA";
+  const senderName = input.heartIntent?.senderName || input.senderName || "我";
+  const occasion = input.heartIntent?.occasion || input.event || input.occasion;
+  const story = input.heartIntent?.story || input.story || input.detail || input.originalMessage;
+  const intentTag = input.heartIntent?.intentTag || input.intentTag;
+  const coreMessage = input.heartIntent?.coreMessage || input.coreMessage;
+  const tonePreference = input.heartIntent?.tone || input.tonePreference || "真诚一点";
+
+  return {
+    recipientName: recipientName.trim(),
+    senderName: senderName.trim() || "我",
+    occasion: occasion.trim(),
+    story: story.trim(),
+    intentTag: intentTag?.trim() || "",
+    coreMessage: coreMessage?.trim() || "",
+    tonePreference,
+  };
+}
+
+function buildMockBody(input: GenerateCopyInput) {
+  const source = getMockHeartIntentSource(input);
+  const storySentence = source.story
+    ? source.story.replace(/[。！？!?]+$/g, "")
+    : "这件事我一直放在心里";
+  const coreSentence = source.coreMessage
+    ? source.coreMessage.replace(/[。！？!?]+$/g, "")
+    : "我想认真把这份心意送给你";
+
+  if (source.tonePreference === "像日常聊天一样") {
+    return [
+      `${source.recipientName}，${storySentence}。`,
+      `${coreSentence}。`,
+      "这些话可能不算特别会说，但这是我真正想让你收到的心意。",
+    ].join("\n\n");
+  }
+
+  if (source.tonePreference === "不要太肉麻") {
+    return [
+      `${source.recipientName}，关于${storySentence}，我想认真跟你说一声。`,
+      `${coreSentence}。`,
+      "这份心意不用说得太满，你明白就好。",
+    ].join("\n\n");
+  }
+
+  if (source.tonePreference === "有仪式感一点") {
+    return [
+      `${source.recipientName}，我想把${storySentence}这件事，好好放进这份心意里。`,
+      `${coreSentence}。`,
+      "这不是一句随口的话，而是我想认真送到你面前的一份心意。",
+    ].join("\n\n");
+  }
+
+  if (source.tonePreference === "温柔一点") {
+    return [
+      `${source.recipientName}，${storySentence}，我一直觉得很珍贵。`,
+      `${coreSentence}。`,
+      "我想把这份心意温柔一点地交给你，也希望你能好好收到。",
+    ].join("\n\n");
+  }
+
+  return [
+    `${source.recipientName}，${storySentence}。`,
+    `${coreSentence}。`,
+    "我可能平时不太会说，但这件事对我来说真的很重要。",
+  ].join("\n\n");
+}
+
+function buildMockPackagedCopy(input: GenerateCopyInput): GenerateCopyResult {
+  const source = getMockHeartIntentSource(input);
+  const titleReason = source.occasion || source.intentTag || "心意";
+
+  return {
+    coverText: "有一份心意送给你",
+    title: `给${source.recipientName}的${titleReason}`,
+    body: buildMockBody(input),
+    quote: source.story
+      ? `关于这件事，我一直记得`
+      : "这份心意，我想送给你",
+    buttonText: "收下心意",
+    signoff: `来自 ${source.senderName}`,
+    acceptedText: "这份心意已被珍藏",
+  };
 }
 
 type CreateGiftApiResult = CreateGiftResult & { ok: true };
@@ -472,7 +561,7 @@ export async function generateCopy(input: GenerateCopyInput): Promise<GenerateCo
     return generateCopyFromOwnedApi(input);
   }
 
-  return { ...MOCK_GENERATED_COPY };
+  return buildMockPackagedCopy(input);
 }
 
 export async function createGift(input: CreateGiftInput): Promise<CreateGiftResult> {
@@ -511,6 +600,12 @@ export async function createGift(input: CreateGiftInput): Promise<CreateGiftResu
     theme: input.theme,
     originalMessage: input.originalMessage,
     amountText: input.amountText,
+    heartIntent: input.heartIntent,
+    recipientRole: input.recipientRole,
+    story: input.story,
+    intentTag: input.intentTag,
+    coreMessage: input.coreMessage,
+    tonePreference: input.tonePreference,
     copy: input.copy,
     token,
     giftUrl,

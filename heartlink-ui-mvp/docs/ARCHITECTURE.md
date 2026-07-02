@@ -1,12 +1,20 @@
-# ARCHITECTURE.md｜心意链接 / HeartLink MVP 技术架构
+# ARCHITECTURE.md｜心意链接 / xygift MVP 技术架构
 
 ## 1. 项目定位
 
-当前项目 `heartlink-ui-mvp` 是 HeartLink / 心意链接的 MVP 前端基础。
+当前项目 `heartlink-ui-mvp` 是 xygift / 心意链接的 MVP 前端基础。
 
 它来自 Figma Make 生成的高保真 UI 原型，并已经经过人工正式化小改和验收。当前阶段的目标不是重写 UI，而是在现有 UI 上逐步接入真实业务能力。
 
 当前 UI 代码是正式 MVP UI 基础，不允许重写、不允许大幅改版、不允许为了接后端或 AI 破坏现有视觉。UI 保护边界以 `docs/DESIGN.md` 为准。
+
+当前产品定位是：**帮用户把已有的心意包装好，做成一个能送出去的东西。**
+
+当前主链路：
+
+```text
+用户交出心意 -> 系统理解心意 -> 模型加工心意 -> 包装成可发送成品 -> 生成链接发送
+```
 
 ## 2. 项目根目录
 
@@ -51,7 +59,7 @@
 5. `src/app/App.tsx`
    当前单页应用模式切换入口，在创建端 `CreatorFlow` 与接收端 `ReceiverFlow` 之间切换。
 6. `src/app/components/CreatorFlow.tsx`
-   创建端完整 UI 状态流，包括首页、场景选择、信息填写、AI 生成、文案编辑、风格选择、预览、生成成功。
+   创建端完整 UI 状态流，包括首页、场景选择、准备这份心意、心意包装、内容编辑、风格选择、预览、生成成功。
 7. `src/app/components/ReceiverFlow.tsx`
    接收端 UI 状态流，包括 loading、封面、正文、接收完成、链接不存在、链接过期。
 8. `src/app/components/ui/`
@@ -69,31 +77,49 @@
 
 ## 5. 当前 UI 状态
 
-当前 UI 已经实现的是前端原型状态流，不是真实业务系统。
+当前 UI 已经从“填表 -> 生成文案”调整为“准备心意 -> 包装心意 -> 生成链接”。
 
 当前已具备：
 
-1. 创建端流程 UI。
-2. 接收端三状态 UI：封面、正文、接收完成。
-3. AI 生成 loading / failed / network-error 等状态 UI。
-4. 输入为空时按钮禁用状态。
-5. 复制成功 / 失败提示 UI。
-6. 接收端加载中 skeleton UI。
-7. 链接不存在 / 链接过期 UI。
-8. mock 文案、mock 接收日期、mock 场景、mock 风格、mock 链接。
+1. 创建端心意准备流程 UI。
+2. `buildHeartIntent(input)` 心意整理函数。
+3. `HeartIntent` / `GiftIntent` 风格的结构化输入对象。
+4. 模型输入中的 `noInventFacts` 事实边界。
+5. 心意包装 loading / failed / network-error 等状态 UI。
+6. 接收端三状态 UI：封面、正文、接收完成。
+7. 复制成功 / 失败提示 UI。
+8. 接收端加载中 skeleton UI。
+9. 链接不存在 / 链接过期 UI。
+10. Supabase create/read/status 服务端函数边界。
 
-当前未具备：
+当前仍不包含：
 
-1. 真实 AI 文案生成。
-2. 真实数据库保存。
-3. 真实 token 链接。
-4. 真实 `/g/{token}` 路由。
-5. 真实打开次数记录。
-6. 真实接收状态记录。
-7. 真实部署配置。
-8. 后端安全层。
-9. 服务端函数。
-10. 真实环境变量配置。
+1. 登录。
+2. 支付。
+3. 模板市场。
+4. 社交广场。
+5. 多种包装形式。
+6. 复杂 H5 编辑器。
+7. 前端直连 AI provider 或前端暴露 provider key。
+
+## 5.1 当前新链路数据流
+
+```text
+CreatorFlow 表单输入
+-> buildHeartIntent / extractHeartIntent
+-> HeartIntent
+-> giftService.generateCopy()
+-> mock packaging 或 /api/generate-copy
+-> giftService.createGift()
+-> giftUrl
+-> ReceiverFlow getGiftByToken(token)
+```
+
+`HeartIntent` 是模型理解心意的结构化输入，包含 `recipientName`、`recipientRole`、`occasion`、`story`、`intentTag`、`coreMessage`、`tone`、`senderName`、`originalInput` 与 `noInventFacts`。
+
+`noInventFacts` 用于约束模型只能加工用户提供的内容，不能把用户没写的经历、长期状态、关系细节、地点、承诺或私人背景写成事实。
+
+AI provider key 只能存在服务端环境变量或平台 secret 中。前端只调用自有 service / Vercel Function，不直接调用 DeepSeek、OpenAI 或其他 provider。
 
 ## 6. 架构原则
 
@@ -148,7 +174,7 @@
 3. 将 UI 中散落的 mock 数据集中管理。
 4. 为后续 Supabase / AI 接入做准备。
 
-### Phase 3：AI 文案生成服务接入
+### Phase 3：心意包装服务接入
 
 目标：
 

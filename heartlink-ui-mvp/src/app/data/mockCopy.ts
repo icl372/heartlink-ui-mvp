@@ -15,26 +15,26 @@ export const DEFAULT_CREATE_GIFT_INPUT: GenerateCopyInput = {
 };
 
 export const MOCK_GIFT_INPUT: GenerateCopyInput = {
-  recipientName: "最亲爱的妈妈",
-  senderName: "您的专属宝贝",
+  recipientName: "妈妈",
+  senderName: "我",
   occasion: "感谢",
   tone: "真诚",
-  amountText: "200",
+  amountText: "",
   relationship: "妈妈",
-  event: "妈妈给我转了 200 元",
-  detail: "她总是在我需要支持的时候，第一时间给我回应。",
+  event: "感谢",
+  detail: "妈妈给我买了一台电脑，我很喜欢，它对我帮助很大。",
   extra: "",
   nickname: "",
-  originalMessage: "妈妈给我转了200元，我想感谢她对我的疼爱和支持。",
+  originalMessage: "妈妈给我买了一台电脑，我很喜欢，它对我帮助很大，我想谢谢她。",
 };
 
 export const MOCK_GENERATED_COPY: GenerateCopyResult = {
-  coverText: "在这琐碎而温热的日常里\n有一份心意请您亲启",
-  title: "妈妈，谢谢您。",
+  coverText: "有一份心意送给你",
+  title: "给妈妈的一份感谢",
   body:
-    "您资助的 200 元流动资金已妥妥到账，瞬间让我的小金库洒满了阳光。这不仅仅是一笔零花钱，更是您对我悄悄流露的纵容与疼爱。\n\n感谢您总是在细微处给予我满满的安全感。每一分资金我都会合理规划。愿岁月的长河里，您始终明朗、温暖，被时光温柔以待！",
-  quote: "水中之灯，照亮夜航；人间词话，不及母爱之长。",
-  buttonText: "点击接收我的爱心电波",
-  signoff: "您的专属宝贝 敬呈",
-  acceptedText: "这份感谢，已被好好收藏",
+    "妈，谢谢你给我买这台电脑。\n\n我真的很喜欢，它对我也很有帮助。这不只是一个电脑，对我来说，也是你对我的支持。\n\n我想让你知道，这件事对我真的很重要，你的这份心意，我真的收到了。",
+  quote: "关于这台电脑，我一直记得。",
+  buttonText: "收下心意",
+  signoff: "来自 我",
+  acceptedText: "这份心意已被珍藏",
 };

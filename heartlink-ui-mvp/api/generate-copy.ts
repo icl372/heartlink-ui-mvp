@@ -59,6 +59,10 @@ const SUPPORTED_DEEPSEEK_MODELS = new Set([
 const PROVIDER_CALL_TIMEOUT_MS = 25_000;
 const MAX_GENERATION_RETRIES = 2;
 const RELATIONSHIP_OPTIONS = new Set(["妈妈", "爸爸", "长辈", "伴侣", "朋友", "孩子", "老师", "同事", "其他"]);
+const HEART_RECIPIENT_ROLES = new Set(["父母", "伴侣", "朋友", "老师", "同学", "同事", "其他"]);
+const HEART_OCCASIONS = new Set(["生日", "感谢", "道歉", "鼓励", "想念", "表白", "和好", "其他"]);
+const HEART_INTENT_TAGS = new Set(["感谢", "道歉", "鼓励", "想念", "祝福", "表白", "其他"]);
+const HEART_TONE_PREFERENCES = new Set(["真诚一点", "温柔一点", "像日常聊天一样", "不要太肉麻", "有仪式感一点"]);
 const DISALLOWED_BODY_OPENING_CONNECTORS = ["但", "但是", "可是", "不过", "所以", "然而"];
 const DISALLOWED_BODY_OPENING_CONNECTOR_PATTERN = /^(但是|可是|不过(?!分)|所以|然而|但(?!愿))/;
 const SUPABASE_RATE_LIMIT_TABLE_PATH = "/rest/v1/ai_usage_events";
@@ -183,6 +187,69 @@ function normalizeOptionalContext(value: unknown): string | undefined {
   return normalizedValue;
 }
 
+function readOptionalString(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+
+  const normalizedValue = value.trim();
+  return normalizedValue || undefined;
+}
+
+function readOptionalEnum<T extends string>(value: unknown, allowedValues: Set<string>): T | null {
+  if (typeof value !== "string") return null;
+
+  const normalizedValue = value.trim();
+  return allowedValues.has(normalizedValue) ? normalizedValue as T : null;
+}
+
+function readHeartIntent(value: unknown): GenerateCopyInput["heartIntent"] | undefined {
+  if (!isRecord(value)) return undefined;
+
+  const recipientName = readOptionalString(value.recipientName);
+  const occasion = readOptionalEnum<NonNullable<GenerateCopyInput["heartIntent"]>["occasion"]>(
+    value.occasion,
+    HEART_OCCASIONS,
+  );
+  const story = readOptionalString(value.story);
+  const tone = readOptionalEnum<NonNullable<GenerateCopyInput["heartIntent"]>["tone"]>(
+    value.tone,
+    HEART_TONE_PREFERENCES,
+  );
+
+  if (!recipientName || !occasion || !story || !tone) return undefined;
+
+  const recipientRole = readOptionalEnum<NonNullable<GenerateCopyInput["recipientRole"]>>(
+    value.recipientRole,
+    HEART_RECIPIENT_ROLES,
+  );
+  const intentTag = readOptionalEnum<NonNullable<GenerateCopyInput["intentTag"]>>(
+    value.intentTag,
+    HEART_INTENT_TAGS,
+  );
+  const coreMessage = readOptionalString(value.coreMessage) ?? "";
+  const senderName = readOptionalString(value.senderName) ?? "";
+  const originalInput = readOptionalString(value.originalInput) ?? "";
+
+  return {
+    recipientName,
+    recipientRole,
+    occasion,
+    story,
+    intentTag,
+    coreMessage,
+    tone,
+    senderName,
+    originalInput,
+    noInventFacts: {
+      recipientName,
+      recipientRole,
+      occasion,
+      story,
+      intentTag,
+      coreMessage,
+    },
+  };
+}
+
 function readGenerateCopyInput(body: unknown): GenerateCopyInput | undefined {
   const value = parseRequestBody(body);
 
@@ -199,10 +266,16 @@ function readGenerateCopyInput(body: unknown): GenerateCopyInput | undefined {
     || (value.detail !== undefined && typeof value.detail !== "string")
     || (value.extra !== undefined && typeof value.extra !== "string")
     || (value.nickname !== undefined && typeof value.nickname !== "string")
+    || (value.recipientRole !== undefined && value.recipientRole !== null && typeof value.recipientRole !== "string")
+    || (value.story !== undefined && typeof value.story !== "string")
+    || (value.intentTag !== undefined && value.intentTag !== null && typeof value.intentTag !== "string")
+    || (value.coreMessage !== undefined && typeof value.coreMessage !== "string")
+    || (value.tonePreference !== undefined && typeof value.tonePreference !== "string")
   ) {
     return undefined;
   }
 
+  const heartIntent = readHeartIntent(value.heartIntent);
   const event = typeof value.event === "string" ? value.event.trim() : undefined;
   const detail = typeof value.detail === "string" ? value.detail.trim() : undefined;
   const rawRelationship = typeof value.relationship === "string" ? value.relationship.trim() : "";
@@ -211,8 +284,24 @@ function readGenerateCopyInput(body: unknown): GenerateCopyInput | undefined {
     : null;
   const extra = normalizeOptionalContext(value.extra);
   const nickname = normalizeOptionalContext(value.nickname);
+  const recipientRole = readOptionalEnum<NonNullable<GenerateCopyInput["recipientRole"]>>(
+    value.recipientRole,
+    HEART_RECIPIENT_ROLES,
+  ) ?? heartIntent?.recipientRole ?? null;
+  const story = readOptionalString(value.story) ?? heartIntent?.story;
+  const intentTag = readOptionalEnum<NonNullable<GenerateCopyInput["intentTag"]>>(
+    value.intentTag,
+    HEART_INTENT_TAGS,
+  ) ?? heartIntent?.intentTag ?? null;
+  const coreMessage = readOptionalString(value.coreMessage) ?? heartIntent?.coreMessage;
+  const tonePreference = readOptionalEnum<NonNullable<GenerateCopyInput["tonePreference"]>>(
+    value.tonePreference,
+    HEART_TONE_PREFERENCES,
+  ) ?? heartIntent?.tone;
   const originalMessage = typeof value.originalMessage === "string"
     ? value.originalMessage.trim()
+    : heartIntent?.originalInput
+      ? heartIntent.originalInput
     : [
         event ? `这次是因为：${event}` : "",
         detail ? `关于TA的细节：${detail}` : "",
@@ -232,6 +321,12 @@ function readGenerateCopyInput(body: unknown): GenerateCopyInput | undefined {
     extra,
     nickname,
     originalMessage,
+    heartIntent,
+    recipientRole,
+    story,
+    intentTag,
+    coreMessage,
+    tonePreference,
   };
 }
 
@@ -441,6 +536,12 @@ function buildExtractionMessages(input: GenerateCopyInput): DeepSeekMessage[] {
         occasion: input.occasion,
         tone: input.tone,
         relationship: input.relationship || undefined,
+        heartIntent: input.heartIntent,
+        recipientRole: input.recipientRole,
+        story: input.story,
+        intentTag: input.intentTag,
+        coreMessage: input.coreMessage,
+        tonePreference: input.tonePreference,
         amountText: input.amountText,
         event: input.event,
         detail: input.detail,
@@ -473,6 +574,23 @@ function getRelationshipToneRule(relationship: GenerateCopyInput["relationship"]
   }
 }
 
+function getTonePreferenceRule(tonePreference: GenerateCopyInput["tonePreference"], fallbackTone: GenerateCopyInput["tone"]) {
+  switch (tonePreference) {
+    case "真诚一点":
+      return "Tone rule: write plainly, directly, and sincerely. Avoid decorative wording.";
+    case "温柔一点":
+      return "Tone rule: keep the wording soft and caring, but do not become mushy or overly intimate.";
+    case "像日常聊天一样":
+      return "Tone rule: write like a WeChat message a real person would send. Keep it relaxed and natural.";
+    case "不要太肉麻":
+      return "Tone rule: avoid sticky intimacy, exaggerated endearments, and over-sweet wording. Stay restrained.";
+    case "有仪式感一点":
+      return "Tone rule: the expression may be a little more complete and ceremonial, but must not sound like an essay or formal dedication.";
+    default:
+      return `Tone rule: follow the existing tone value ${fallbackTone}, while still staying natural and grounded.`;
+  }
+}
+
 function buildGenerationMessages(
   input: GenerateCopyInput,
   extractedContext: ExtractedGiftContext,
@@ -487,21 +605,29 @@ function buildGenerationMessages(
   const apologyToneRule = input.occasion === "道歉"
     ? "Apology tone rule: in apology messages, any sentence that infers the recipient's feelings or mental state must start with \"我感觉\". Do not make judgmental claims such as \"你其实需要我在乎\"; write a humbler line such as \"我感觉你那天其实挺需要我在乎的\". This rule only applies to apology messages."
     : "";
+  const tonePreferenceRule = getTonePreferenceRule(input.heartIntent?.tone || input.tonePreference, input.tone);
 
   return [
     {
       role: "system",
       content: [
-        "Your task is not to invent a moving letter. Your task is to reorganize only the user's provided information into natural Chinese words that sound like a real person.",
-        "Use only facts from originalInput and extracted. Do not add unstated experiences, personality judgments, long-term states, exam/work preparation, relationship knowledge, or private background.",
-        "Use the provided extracted JSON as the primary source of truth. Do not ignore the detail field.",
-        "The body must naturally mention at least one concrete detail from extracted.detail. Avoid generic thanks or empty blessing templates.",
+        "You are the heart-intent packaging assistant for 心意链接.",
+        "Product positioning: 心意链接 does not create feelings for the user. It helps users package the feelings they already have into something they can send.",
+        "Your task is not to generate a generic blessing copy. Your task is to organize, polish, and package the user's existing heart-intent materials into natural Chinese words suitable for direct sending.",
+        "Use only facts from heartIntent, noInventFacts, originalInput, and extracted. Do not add unstated experiences, personality judgments, long-term states, exam/work preparation, relationship knowledge, locations, promises, or private background.",
+        "If information is sparse, write sincerely around the available material instead of expanding with invented facts.",
+        "Use the provided heartIntent and extracted JSON as the primary source of truth. Do not ignore the story/detail field.",
+        "The body must naturally preserve the concrete thing the user provided. Avoid diluting it into generic thanks or empty blessing templates.",
         "The opening sentence of body should also be grounded in concrete information from extracted.event or extracted.detail. Do not start with broad scene-setting such as seeing someone busy, always being there, or generic family/friendship descriptions.",
         "Body opening rule: the first sentence of body must not start with transitional connectors such as 但, 但是, 可是, 不过, 所以, or 然而. The event field is background context for understanding the occasion and tone, not a sentence to quote directly. Reorganize it into an independent and complete opening sentence that does not assume prior context.",
         "Avoid a stitched feeling where the first sentence is generic and only the ending mentions a concrete detail.",
-        "Motivation recognition rule: the core sentence should not only thank the recipient for what they did, but also show that the sender sees why they may have done it.",
-        "A useful shape is \"我知道你不是因为……,而是因为……\" or \"我后来才懂,你……,其实是……\". Do not force this exact wording, but the body should express seeing the unspoken intention behind the detail.",
-        "The motivation must come from the user's detail field. Do not invent specific memories, exact words, relationship history, or private reasons that the user did not provide.",
+        "Say ordinary words more smoothly, completely, and warmly. Do not over-write.",
+        "The output should feel like something a real person can send: phrases like \"我真的想让你知道……\", \"这件事对我来说很重要……\", or \"我可能平时不太会说，但……\" are closer than formal essay language.",
+        "Do not write like an essay, a dedication, a speech, or a generic greeting. Avoid wording like \"谨以此文献给\" or \"愿你在未来的人生道路上\".",
+        "Avoid obvious AI-style or over-literary phrases unless the user provided them: 海河边的微风、每一个第一次、时光里的温柔、岁月长河、星辰大海、你是我生命里的光.",
+        "Avoid piling up adjectives. Keep the expression natural and sendable.",
+        "Motivation recognition rule: if the user's material contains enough support, the core sentence may show that the sender sees the intention behind the detail. If there is not enough support, do not force motivation analysis.",
+        "The motivation must come from the user's story/detail/coreMessage fields. Do not invent specific memories, exact words, relationship history, or private reasons that the user did not provide.",
         "If the detail field only states a fact and does not explain motivation, make only a light, common-sense inference close to the scene. For example, asking whether food should be spicy may imply caring about the sender's comfort. Keep it restrained and do not over-interpret.",
         "Do not write claims like \"你一直很XX\", \"你这段时间很XX\", \"听说XX\", \"我知道XX\", or \"你肯定XX\" unless that exact fact is clearly present in originalInput or extracted.",
         "Do not mention any concrete experience, action, preparation, effort, exam, work, habit, or relationship understanding that is not present in the input fields.",
@@ -511,13 +637,14 @@ function buildGenerationMessages(
         relationTone,
         relationshipToneRule,
         apologyToneRule,
+        tonePreferenceRule,
         "Write like a real person sending a message, not like an essay. Use varied sentence lengths and plain emotional wording.",
         "Do not use parallel or paired sentence patterns such as \"A的XX和B的XX，都/也YY\". Avoid polished antithesis, slogan-like rhythm, or list-like praise.",
         "Do not end body paragraphs with abstract summary sentences such as \"谢谢你给我的每一个XX\" or \"这些瞬间让我知道XX\". Once the concrete detail lands, you may stop without forced elevation.",
         "Do not ban abstract emotional words such as 心, 牵挂, or 温暖 everywhere. They are acceptable near the ending if concrete details have already supported them. Avoid them only when they replace concrete detail in the opening or core motivation sentence.",
         `Do not use these banned phrases or highly similar expressions: ${bannedTerms.join("、")}.`,
         "Return only one JSON object with these non-empty string keys:",
-        "coverText, title, body, buttonText, signoff, acceptedText.",
+        "coverText, title, body, quote, buttonText, signoff, acceptedText.",
         "This product is a HeartLink blessing-card experience, not a red-packet, cash, payment, collection, transfer, withdrawal, or reward tool.",
         "Even if the user mentions money, amounts, transfers, or red packets, express only gratitude and care; never imply platform money, receiving money, sending money, or payment.",
         `buttonText is a fixed product interaction label, not creative copy. Set buttonText exactly to \"${SAFE_BUTTON_TEXT}\".`,
@@ -533,18 +660,32 @@ function buildGenerationMessages(
     {
       role: "user",
       content: JSON.stringify({
+        heartIntent: input.heartIntent,
         originalInput: {
           recipientName: input.recipientName,
           senderName: input.senderName,
           occasion: input.occasion,
           tone: input.tone,
           relationship: input.relationship || undefined,
+          recipientRole: input.recipientRole,
+          story: input.story,
+          intentTag: input.intentTag,
+          coreMessage: input.coreMessage,
+          tonePreference: input.tonePreference,
           amountText: input.amountText,
           event: input.event,
           detail: input.detail,
           extra: input.extra,
           nickname: input.nickname,
           originalMessage: input.originalMessage,
+        },
+        noInventFacts: input.heartIntent?.noInventFacts ?? {
+          recipientName: input.recipientName,
+          recipientRole: input.recipientRole,
+          occasion: input.heartIntent?.occasion || input.event || input.occasion,
+          story: input.story || input.detail,
+          intentTag: input.intentTag,
+          coreMessage: input.coreMessage,
         },
         extracted: extractedContext,
         extra: input.extra,
@@ -611,18 +752,24 @@ function readExtractedGiftContext(payload: unknown): ExtractedGiftContext | unde
 }
 
 function buildStructuredExtractedContext(input: GenerateCopyInput): ExtractedGiftContext | undefined {
-  const event = input.event?.trim();
-  const detail = input.detail?.trim();
+  const heartIntent = input.heartIntent;
+  const event = heartIntent?.occasion || input.event?.trim();
+  const story = heartIntent?.story || input.story?.trim() || input.detail?.trim();
+  const coreMessage = heartIntent?.coreMessage || input.coreMessage?.trim();
+  const intentTag = heartIntent?.intentTag || input.intentTag;
 
-  if (!event || !detail) return undefined;
+  if (!event || !story) return undefined;
 
   const detailParts = [
-    detail,
+    story,
+    intentTag ? `心意重点：${intentTag}` : "",
+    coreMessage ? `最想让对方知道的话：${coreMessage}` : "",
     input.extra?.trim() ? `补充瞬间或对话：${input.extra.trim()}` : "",
     input.nickname?.trim() ? `彼此懂的梗或称呼：${input.nickname.trim()}` : "",
   ].filter(Boolean);
   const relation = [
     input.recipientName,
+    heartIntent?.recipientRole || input.recipientRole ? `是${heartIntent?.recipientRole || input.recipientRole}` : "",
     input.senderName ? `和${input.senderName}` : "",
     input.nickname?.trim() ? `，称呼/梗：${input.nickname.trim()}` : "",
   ].filter(Boolean).join("");
@@ -636,10 +783,24 @@ function buildStructuredExtractedContext(input: GenerateCopyInput): ExtractedGif
 
 function getProvidedSourceText(input: GenerateCopyInput, extractedContext: ExtractedGiftContext) {
   return [
+    input.heartIntent?.recipientName,
+    input.heartIntent?.recipientRole,
+    input.heartIntent?.occasion,
+    input.heartIntent?.story,
+    input.heartIntent?.intentTag,
+    input.heartIntent?.coreMessage,
+    input.heartIntent?.tone,
+    input.heartIntent?.senderName,
+    input.heartIntent?.originalInput,
     input.recipientName,
     input.senderName,
     input.occasion,
     input.tone,
+    input.recipientRole,
+    input.story,
+    input.intentTag,
+    input.coreMessage,
+    input.tonePreference,
     input.amountText,
     input.event,
     input.detail,
@@ -654,8 +815,12 @@ function getProvidedSourceText(input: GenerateCopyInput, extractedContext: Extra
 
 function getSourceDetailLength(input: GenerateCopyInput, extractedContext: ExtractedGiftContext) {
   const sourceText = [
+    input.heartIntent?.story,
+    input.heartIntent?.coreMessage,
     input.event,
     input.detail,
+    input.story,
+    input.coreMessage,
     input.extra,
     input.nickname,
     extractedContext.event,

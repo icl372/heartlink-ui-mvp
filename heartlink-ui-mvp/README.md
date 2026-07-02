@@ -1,17 +1,19 @@
-# HeartLink / 心意链接
+# xygift / 心意链接
 
-HeartLink 是一个将一句心意变成可被打开的小礼物链接的 MVP 前端项目。
+心意链接的新定位是：**帮用户把已有的心意包装好，做成一个能送出去的东西。**
 
-当前项目来自 Figma Make 导出的高保真 UI，并已完成正式化小改与人工验收。它是 MVP v0.1 的已验收 UI 基础，不是待重做的原型。后续开发必须在现有 UI 上小步接入能力，不能重写视觉或流程。
+当前项目来自 Figma Make 导出的高保真 UI，并已完成正式化小改与多轮 MVP 能力接入。它是当前产品的已验收 UI 基础，不是待重做的原型。后续开发必须在现有 UI 上小步接入能力，不能重写视觉或流程。
 
 ## 项目状态
 
 - 技术栈：Vite、React、TypeScript、Tailwind CSS、Radix/shadcn 风格基础组件。
-- 当前能力：创建端流程、AI 文案 mock 生成与编辑、风格选择、预览、mock 链接创建，以及接收端封面、正文、接收完成三状态。
-- 当前链接：本地 mock 使用 `/to/:token`；也保留 query/hash token 读取用于开发验收。
-- 当前数据：创建内容只使用内存和 LocalStorage mock preview 存储，支持同一浏览器的刷新或新标签预览。
+- 当前主链路：用户交出心意 -> 系统理解心意 -> 模型加工心意 -> 包装成可发送成品 -> 生成链接发送。
+- 当前创建端：围绕“准备这份心意”收集收信人、关系、送出原因、具体小事、表达重点、补充话和想要的感觉。
+- 当前结果页：不再强调“AI 文案”，而是呈现“心意已包装好”的成品状态，支持预览、复制心意链接和重新包装。
+- 当前接收端：保留信封 / 信纸式体验，包含封面、正文、已接收、not-found、expired 等状态。
+- 当前数据：已具备 Supabase create/read/status 写回链路，同时保留 mock / localStorage 作为本地开发和同浏览器预览兜底。
 
-当前不是正式生产链接服务：LocalStorage 不支持跨设备共享，也不是正式的数据持久化方案。
+当前仍是 MVP：不包含登录、支付、模板市场、社交广场、复杂编辑器、多种包装样式或用户上传素材。
 
 ## 本地运行
 
@@ -37,7 +39,7 @@ npm run build
 创建端：
 
 ```text
-首页 -> 场景选择 -> 填写信息 -> AI 生成文案 -> 选择风格 -> 预览 -> 生成链接
+首页 -> 场景选择 -> 准备这份心意 -> 包装心意 -> 选择风格 -> 预览这份心意 -> 生成心意链接
 ```
 
 接收端：
@@ -46,18 +48,37 @@ npm run build
 打开链接 -> 封面态 -> 正文态 -> 接收完成态
 ```
 
-接收端还保留 loading、链接不存在、链接过期状态。创建端保留输入为空、AI 生成中、AI 失败、网络错误、复制成功和复制失败状态。
+异常状态：
 
-## Mock 与本地验收
+```text
+生成失败 / 网络错误 / 限流 / 链接不存在 / 链接过期 / 复制失败
+```
 
-当前 AI 文案由本地 mock service 提供，不会请求 DeepSeek、OpenAI、Gemini 或其他真实 AI 服务。
+## 心意理解数据
+
+创建端会先整理出结构化的 `HeartIntent`，作为模型理解心意的输入：
+
+- `recipientName`：这份心意送给谁。
+- `recipientRole`：TA 是用户的谁。
+- `occasion`：为什么想送。
+- `story`：有什么事，想放进这份心意里。
+- `intentTag`：最想表达的重点。
+- `coreMessage`：最想让对方知道的一句话。
+- `tone`：想要的感觉。
+- `senderName`：署名。
+- `originalInput`：用户原始输入。
+- `noInventFacts`：不能被模型乱编的事实边界。
+
+核心原则：用户已经有心意，系统只负责理解、整理和包装，不负责凭空创造事实。
+
+## Mock 与验收
 
 用于验收的 mock 触发值：
 
-- `__mock_ai_error__`：AI 生成失败。
+- `__mock_ai_error__`：生成失败。
 - `__mock_network_error__`：网络错误。
-- `__mock_empty_content__`：AI 返回空内容。
-- `__mock_ai_unavailable__`：AI 服务不可用。
+- `__mock_empty_content__`：返回空内容。
+- `__mock_ai_unavailable__`：服务不可用。
 
 接收端验收示例：
 
@@ -82,9 +103,9 @@ npm run build
 必须保持：
 
 - 奶油背景、白色圆角卡片、香槟金细节、深咖色主按钮和信纸感排版。
-- 创建端清晰的步骤流。
+- 创建端清晰的步骤流，但表达应像“准备心意”，不是普通填表工具。
 - 接收端沉浸式封面、正文、完成三状态。
-- 成功页的专属链接、复制链接、打开预览、再创建一份及隐私提示。
+- 成功页的心意链接、复制链接、预览这份心意、再做一份及隐私提示。
 - 既有 loading、error、empty 与接收端异常状态组件。
 
 不得重做首页、创建流程或接收端，不得改成 SaaS 风格、普通表单工具或复杂 H5 编辑器。
@@ -93,24 +114,17 @@ npm run build
 
 当前阶段不做：
 
-- 真实 AI API 调用或在前端放置 API Key。
-- Supabase 项目、数据库、真实 token 查询或真实后端。
+- 前端直连 AI provider 或在前端放置 API Key。
 - 登录、支付、小程序、App、模板市场、多人协作或社交广场。
 - 图片、视频、音乐上传，接收者回复留言，接收状态管理页，生成图片或保存截图作为核心能力。
-- Next.js 迁移、复杂路由重构或正式部署配置。
+- Next.js 迁移、复杂路由重构或技术栈更换。
 
-后续真实 AI、Supabase、服务端函数或正式链接能力必须替换 `src/app/services/` 内部实现，并继续复用现有 UI 和状态组件。
+后续真实 AI、Supabase、服务端函数或正式链接能力必须替换 `src/app/services/` 或 `api/` 内部实现，并继续复用现有 UI 和状态组件。
 
-## 已知待处理项
+## 相关文档
 
-- 主题 / 风格选择后，预览页和接收端视觉尚未明显映射到所选主题。该问题需作为单独任务处理。
-- 浏览器 title / favicon / metadata 的品牌清理不在当前任务范围内。
-
-## 相关准备文档
-
+- [QA_HEARTLINK_NEW_FLOW.md](docs/QA_HEARTLINK_NEW_FLOW.md)
 - [AI_SERVICE_INTEGRATION.md](docs/AI_SERVICE_INTEGRATION.md)
 - [SUPABASE_FIELD_MAPPING.md](docs/SUPABASE_FIELD_MAPPING.md)
 - [LOCAL_STORAGE_BOUNDARY.md](docs/LOCAL_STORAGE_BOUNDARY.md)
 - [LINK_ROUTING_PLAN.md](docs/LINK_ROUTING_PLAN.md)
-- [MOBILE_QA_TODO025.md](docs/MOBILE_QA_TODO025.md)
-

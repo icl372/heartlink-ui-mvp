@@ -328,7 +328,7 @@ export function ReceiverFlow({ onBack, onCreateGift, token }: ReceiverFlowProps)
                   A message for you
                 </p>
                 <h1 style={{ fontFamily: "'Noto Serif SC', serif", color: "#3F342F", fontSize: 22, letterSpacing: 5, textAlign: "center", margin: "0 0 6px", lineHeight: 1.4 }}>
-                  致：{gift?.recipientName ?? ""}
+                  给 {gift?.recipientName ?? ""} 的一份小心意
                 </h1>
 
                 {/* Ornament */}
@@ -348,7 +348,7 @@ export function ReceiverFlow({ onBack, onCreateGift, token }: ReceiverFlowProps)
                   disabled={isOpening}
                   whileTap={{ scale: 0.97 }}
                   style={{ width: "100%", padding: "16px 0", borderRadius: 99, background: isOpening ? themeVisual.accentColor : themeVisual.primaryColor, color: "#FFFFFF", fontFamily: "'Noto Sans SC', sans-serif", fontSize: 15, letterSpacing: 4, border: "none", cursor: "pointer", boxShadow: "0 6px 24px rgba(71,59,53,0.25)", transition: "background 0.3s" }}>
-                  {isOpening ? "正在开启…" : "点击开启信笺"}
+                  {isOpening ? "正在开启…" : "打开这份心意"}
                 </motion.button>
 
                 {/* Footer tag */}
@@ -488,9 +488,12 @@ export function ReceiverFlow({ onBack, onCreateGift, token }: ReceiverFlowProps)
                   <p style={{ fontFamily: "'Lora', serif", color: themeVisual.accentColor, fontSize: 10, letterSpacing: 4, textTransform: "uppercase", margin: "0 0 10px" }}>
                     {themeVisual.letterLabel}
                   </p>
-                  <h1 style={{ fontFamily: "'Noto Serif SC', serif", color: "#3F342F", fontSize: 26, letterSpacing: 4, margin: "0 0 20px", lineHeight: 1.35 }}>
-                    {centralLetterTitle}
+                  <h1 style={{ fontFamily: "'Noto Serif SC', serif", color: "#3F342F", fontSize: 26, letterSpacing: 4, margin: "0 0 10px", lineHeight: 1.35 }}>
+                    这份心意已收到
                   </h1>
+                  <p style={{ fontFamily: "'Noto Sans SC', sans-serif", color: themeVisual.footerColor, fontSize: 12, lineHeight: 1.8, letterSpacing: 0.5, margin: "0 0 18px" }}>
+                    愿这份小小的心意，被认真看见。
+                  </p>
                   <div style={{ height: 1, background: themeVisual.borderColor }} />
                 </div>
 
@@ -641,7 +644,7 @@ export function ReceiverFlow({ onBack, onCreateGift, token }: ReceiverFlowProps)
                 </h2>
                 <div style={{ width: 24, height: 1, background: "#C9A66B", margin: "8px auto 16px", opacity: 0.5 }} />
                 <p style={{ fontFamily: "'Noto Serif SC', serif", color: "#9B8E86", fontSize: 14, lineHeight: 2, textAlign: "center", letterSpacing: 0.5, margin: "0 0 36px" }}>
-                  链接有效期已过<br />请联系发件人重新生成一份
+                  链接有效期已过<br />请联系发件人重新做一份
                 </p>
 
                 <button onClick={() => { void handleViewSample(); }}

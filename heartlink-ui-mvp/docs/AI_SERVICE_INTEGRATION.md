@@ -1,66 +1,71 @@
-# AI_SERVICE_INTEGRATION.md｜HeartLink AI 服务接入点
+# AI_SERVICE_INTEGRATION.md｜心意包装服务接入点
 
 ## 1. 文档定位
 
-本文档记录 TODO-020 的 AI 服务端函数接入点。
+本文档记录心意链接当前 AI / mock 生成边界。当前任务不新增真实 AI 接入，不新增环境变量，也不改 Supabase。
 
-TODO-032 后，`generateCopy(input)` 默认仍使用本地 mock；仅当浏览器构建时明确设置非敏感开关 `VITE_USE_REAL_AI=true`，才会调用同源 `/api/generate-copy`。浏览器不会直接请求任何 AI provider，也不读取 provider 密钥。
+心意链接的新定位是：**帮用户把已有的心意包装好，做成一个能送出去的东西。**
 
-## 2. 当前前端入口
-
-默认创建端链路：
+AI 的任务不再是“凭空生成祝福文案”，而是：
 
 ```text
-CreatorFlow.tsx -> generateCopy(input) -> mock copy result
+根据用户提供的真实心意材料，把这份心意整理、润色、包装成一份可以直接送出去的心意成品。
 ```
 
-当前 mock service 位于：
+## 2. 当前调用路径
+
+默认 mock 路径：
 
 ```text
-src/app/services/giftService.ts
+CreatorFlow.tsx -> giftService.generateCopy(input) -> mock packaged result
 ```
 
-当前输入 / 输出类型位于：
+真实 AI 开关路径：
 
 ```text
-src/app/types/ai.ts
-src/app/types/errors.ts
+CreatorFlow.tsx -> giftService.generateCopy(input) -> POST /api/generate-copy -> Vercel Function -> AI provider
 ```
 
-启用真实路径时：
+前端不得直接请求 DeepSeek、OpenAI、Gemini 或任何 provider；provider key 不得进入前端 bundle。
+
+## 3. HeartIntent 输入
+
+`generateCopy(input)` 应优先使用 `HeartIntent` / `GiftIntent` 风格的结构化输入：
+
+1. `recipientName`：这份心意送给谁。
+2. `recipientRole`：TA 是用户的谁。
+3. `occasion`：为什么想送。
+4. `story`：有什么事，想放进这份心意里。
+5. `intentTag`：最想表达的重点。
+6. `coreMessage`：最想让对方知道的一句话。
+7. `tone`：想要的感觉。
+8. `senderName`：署名。
+9. `originalInput`：用户原始输入。
+10. `noInventFacts`：不能乱编的事实边界。
+
+旧字段仍保留兼容映射，不能因为新字段接入导致 mock、历史 gift 或异常输入崩溃。
+
+## 4. 提示词核心规则
+
+服务端真实路径和 mock 生成都应遵守同一产品规则：
+
+1. 只加工用户提供的内容，不编造用户没有说过的事实。
+2. 保留用户提供的具体事情，不把细节稀释成空泛套话。
+3. 表达要自然，像可以发给真实的人，不像作文或明显 AI 生成文本。
+4. 不过度文艺，不堆砌形容词，不使用与用户输入无关的宏大意象。
+5. 如果信息不足，就围绕已有内容写得真诚一点，不强行扩写。
+6. 根据 `tone` 调整表达：真诚、温柔、日常聊天、克制肉麻或有仪式感。
+7. 不输出写作过程，只输出现有 `GenerateCopyResult` 兼容结构。
+
+特别禁止：
 
 ```text
-CreatorFlow.tsx -> generateCopy(input) -> POST /api/generate-copy -> Vercel Function -> DeepSeek
+把用户没写的经历、长期状态、关系认知、地点、承诺、考试/工作准备、私人背景写成事实。
 ```
 
-`VITE_USE_REAL_AI` 仅控制是否调用自有同源接口，不能保存、传递或推导任何 provider key。未启用时继续使用 mock，现有 mock 错误触发器也始终优先于真实路径，供本地回归使用。
+## 5. 输出结构
 
-## 3. 后续替换目标
-
-真实 AI 的调用切换仅限 `giftService.generateCopy(input)` 内部实现。
-
-目标链路为：
-
-```text
-CreatorFlow.tsx -> generateCopy(input) -> service function endpoint -> AI provider
-```
-
-前端仍然只调用自己的服务端函数，不直接调用任何 AI provider。
-
-## 4. 服务端函数输入
-
-后续服务端函数输入应复用 `GenerateCopyInput`：
-
-1. `recipientName`
-2. `senderName`
-3. `occasion`
-4. `tone`
-5. `amountText`
-6. `originalMessage`
-
-## 5. 服务端函数输出
-
-后续服务端函数输出应复用 `GenerateCopyResult`：
+继续复用 `GenerateCopyResult`：
 
 1. `coverText`
 2. `title`
@@ -69,9 +74,15 @@ CreatorFlow.tsx -> generateCopy(input) -> service function endpoint -> AI provid
 5. `buttonText`
 6. `acceptedText`
 
+短 UI 字段仍由服务端兜底：
+
+1. `buttonText` 固定为“收下心意”。
+2. `coverText` 保持短提示，不暗示红包、支付或奖励。
+3. `acceptedText` 保持短完成态提示。
+
 ## 6. 错误映射
 
-后续服务端函数错误应映射到当前已有错误边界：
+服务端函数错误应映射到当前已有错误边界：
 
 1. `validation-empty`
 2. `ai-generation-failed`
@@ -80,35 +91,22 @@ CreatorFlow.tsx -> generateCopy(input) -> service function endpoint -> AI provid
 5. `network-error`
 6. `rate-limited`
 
-前端 UI 继续复用当前已有状态：
-
-1. AI loading
-2. AI success
-3. AI failed
-4. network-error
-5. failed / service-busy treatment for `rate-limited`
-
-不要新增大面积错误页，不要暴露 provider 技术错误给普通用户。
+前端 UI 继续复用当前已有状态，不新增大面积错误页，不暴露 provider 技术错误给普通用户。
 
 ## 7. 安全边界
-
-后续接入必须遵守：
 
 1. 前端不得直接调用 AI provider。
 2. 前端不得包含 provider key。
 3. 不创建 `VITE_` 前缀的 AI 密钥变量。
 4. provider key 只能存在服务端环境。
-5. 服务端函数应统一处理重试、限流和错误归一。
-6. 当前 mock service 在真实服务可用前必须保持可运行。
+5. 服务端函数统一处理重试、限流、错误归一和内容安全兜底。
+6. mock service 必须继续可运行，便于本地和异常状态回归。
 
-## 8. 本轮不做
+## 8. 当前不做
 
-本轮不做以下事项：
-
-1. 不接真实 AI。
-2. 不新增真实 endpoint。
-3. 不新增 `.env`。
-4. 不新增 API Key。
-5. 不修改创建端 UI。
-6. 不修改主题 / 风格映射。
-7. 不接 Supabase。
+1. 不新增真实 AI provider。
+2. 不新增环境变量。
+3. 不新增 `.env` 或 `.env.local`。
+4. 不改 Supabase。
+5. 不改接收端信封结构。
+6. 不新增登录、支付、模板市场或多种包装形式。

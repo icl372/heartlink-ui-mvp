@@ -1,4 +1,11 @@
-import type { GiftOccasion, GiftTone } from "./gift";
+import type {
+  GiftOccasion,
+  GiftTone,
+  HeartIntent,
+  HeartIntentTag,
+  HeartRecipientRole,
+  HeartTonePreference,
+} from "./gift";
 
 export type GiftRelationship = "妈妈" | "爸爸" | "长辈" | "伴侣" | "朋友" | "孩子" | "老师" | "同事" | "其他";
 
@@ -14,6 +21,12 @@ export interface GenerateCopyInput {
   extra?: string;
   nickname?: string;
   originalMessage: string;
+  heartIntent?: HeartIntent;
+  recipientRole?: HeartRecipientRole | null;
+  story?: string;
+  intentTag?: HeartIntentTag | null;
+  coreMessage?: string;
+  tonePreference?: HeartTonePreference;
 }
 
 export interface GenerateCopyResult {
@@ -38,6 +51,12 @@ export const GENERATE_COPY_INPUT_FIELDS = [
   "extra",
   "nickname",
   "originalMessage",
+  "heartIntent",
+  "recipientRole",
+  "story",
+  "intentTag",
+  "coreMessage",
+  "tonePreference",
 ] as const satisfies readonly (keyof GenerateCopyInput)[];
 
 export const GENERATE_COPY_REQUIRED_TEXT_FIELDS = [

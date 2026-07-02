@@ -24,3 +24,11 @@ export {
   getPublicSiteOrigin,
   isGiftPreviewMode,
 } from "./giftUrl";
+
+export {
+  buildHeartIntent,
+} from "./heartIntent";
+
+export type {
+  BuildHeartIntentInput,
+} from "./heartIntent";

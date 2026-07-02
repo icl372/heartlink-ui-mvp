@@ -89,3 +89,27 @@ src/app/types/gift.ts -> GiftRecord
 ## 6. 后续建议
 
 TODO-023 应继续确认 localStorage 边界，明确它只用于 mock 或临时草稿，不作为正式生产链接数据源。
+
+## 7. 心意包装新链路字段补充
+
+当前创建端已从“生成文案”调整为“包装心意”。未来如需把结构化心意材料完整保存到 Supabase，可在不破坏现有 `gifts` 表核心字段的前提下补充以下映射建议。本节只做文档同步，不修改真实数据库。
+
+| 前端字段 | 含义 | 建议 Supabase 字段 | 说明 |
+| --- | --- | --- | --- |
+| `recipientName` | 这份心意送给谁 | `recipient_name` | 继续复用现有字段。 |
+| `recipientRole` | TA 是用户的谁 | `recipient_role` | 可 nullable；用于语气边界，不是登录关系。 |
+| `occasion` | 为什么想送 | `occasion` | 继续复用现有字段。 |
+| `story` | 有什么事想放进心意里 | `story` 或 `original_message` | 若不新增字段，可先落到 `original_message`；后续建议独立字段。 |
+| `intentTag` | 最想表达的重点 | `intent_tag` | 可 nullable；标签值不是用户正文。 |
+| `coreMessage` | 最想让对方知道的一句话 | `core_message` | 可 nullable；用于包装时保留用户重点。 |
+| `tone` | 想要什么感觉 | `tone` | 继续复用现有字段；如未来支持多选，可改为 JSON/text array。 |
+| `senderName` | 署名 | `sender_name` | 继续复用现有字段。 |
+| `originalInput` | 用户原始输入快照 | `heart_intent` JSON 或 `original_message` | 建议未来用 JSON 保存完整 `HeartIntent` 快照。 |
+| `noInventFacts` | 禁止乱编的事实边界 | `heart_intent` JSON | 不建议拆成多列，适合随 `HeartIntent` JSON 保存。 |
+
+建议后续方案：
+
+1. 短期继续兼容现有 `recipient_name`、`sender_name`、`occasion`、`tone`、`original_message` 字段。
+2. 中期如需完整追踪心意材料，可新增 `heart_intent jsonb`，保存 `HeartIntent` 快照。
+3. 不把敏感信息检测、登录关系、用户画像或支付信息塞进 `gifts` 表。
+4. `noInventFacts` 只作为模型事实边界，不是安全权限控制。
